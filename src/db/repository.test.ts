@@ -77,7 +77,7 @@ describe("FortuneRepository", () => {
     }
   });
 
-  it("records and finishes an ingestion run with sanitized metadata fields", async () => {
+  it("derives a controlled run summary and ignores unsafe free-form caller text", async () => {
     const { client, repository } = await createTestRepository();
 
     try {
@@ -87,15 +87,18 @@ describe("FortuneRepository", () => {
         attempt: "retry_1",
         startedAt: new Date("2026-08-25T22:30:00Z"),
       });
-      await repository.finishRun(runId, {
-        status: "fetch_error",
+      const unsafePayload = "Invented source-derived response prose ".repeat(20);
+      const unsafeResult = {
+        status: "fetch_error" as const,
         sourceDate: null,
         httpStatus: 503,
         contentHash: null,
-        errorCode: "SOURCE_UNAVAILABLE",
-        errorSummary: "Invented sanitized summary",
+        errorCode: "SOURCE_FETCH_FAILED" as const,
+        errorSummary: unsafePayload,
         finishedAt: new Date("2026-08-25T22:30:05Z"),
-      });
+      };
+
+      await repository.finishRun(runId, unsafeResult);
 
       const result = await client.query<{
         status: string;
@@ -110,10 +113,56 @@ describe("FortuneRepository", () => {
         {
           status: "fetch_error",
           http_status: 503,
-          error_code: "SOURCE_UNAVAILABLE",
-          error_summary: "Invented sanitized summary",
+          error_code: "SOURCE_FETCH_FAILED",
+          error_summary: "Source request failed",
         },
       ]);
+      expect(result.rows[0].error_summary).not.toContain(unsafePayload);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("rejects an unknown ingestion error code at runtime", async () => {
+    const { client, repository } = await createTestRepository();
+
+    try {
+      const runId = await repository.startRun({
+        source: "gogo",
+        targetDate: "2026-08-26",
+        attempt: "retry_1",
+        startedAt: new Date("2026-08-25T22:30:00Z"),
+      });
+
+      await expect(
+        repository.finishRun(runId, {
+          status: "fetch_error",
+          sourceDate: null,
+          errorCode: "Invented full response body" as never,
+        }),
+      ).rejects.toThrow(/unsupported ingestion error code/i);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("enforces the database size bound for run summaries", async () => {
+    const { client, repository } = await createTestRepository();
+
+    try {
+      const runId = await repository.startRun({
+        source: "gogo",
+        targetDate: "2026-08-26",
+        attempt: "retry_1",
+        startedAt: new Date("2026-08-25T22:30:00Z"),
+      });
+
+      await expect(
+        client.query(
+          "update ingestion_runs set error_summary = $1 where id = $2",
+          ["x".repeat(121), runId],
+        ),
+      ).rejects.toThrow();
     } finally {
       await client.close();
     }

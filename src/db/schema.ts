@@ -12,9 +12,12 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 
 import { SOURCES, type WinnerCategory } from "@/features/fortune/domain";
+
+export const INGESTION_ERROR_SUMMARY_MAX_LENGTH = 120;
 
 export const sourceEnum = pgEnum("source", SOURCES);
 export const ingestionAttemptEnum = pgEnum("ingestion_attempt", [
@@ -103,7 +106,9 @@ export const ingestionRuns = pgTable("ingestion_runs", {
   httpStatus: integer("http_status"),
   contentHash: text("content_hash"),
   errorCode: text("error_code"),
-  errorSummary: text("error_summary"),
+  errorSummary: varchar("error_summary", {
+    length: INGESTION_ERROR_SUMMARY_MAX_LENGTH,
+  }),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
 });

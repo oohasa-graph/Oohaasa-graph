@@ -4,6 +4,7 @@ import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import {
   editions,
   fortuneEntries,
+  INGESTION_ERROR_SUMMARY_MAX_LENGTH,
   ingestionRuns,
 } from "@/db/schema";
 import * as schema from "@/db/schema";
@@ -30,13 +31,20 @@ export type StartRunInput = {
   startedAt: Date;
 };
 
+const INGESTION_ERROR_SUMMARIES = {
+  SOURCE_STALE: "Source date is stale",
+  EDITION_INVALID: "Source edition is invalid",
+  SOURCE_FETCH_FAILED: "Source request failed",
+} as const;
+
+export type IngestionErrorCode = keyof typeof INGESTION_ERROR_SUMMARIES;
+
 export type RunResult = {
   status: IngestionStatus;
   sourceDate: string | null;
   httpStatus?: number | null;
   contentHash?: string | null;
-  errorCode: string | null;
-  errorSummary?: string | null;
+  errorCode: IngestionErrorCode | null;
   finishedAt?: Date;
 };
 
@@ -159,7 +167,7 @@ export function createFortuneRepository<
           httpStatus: result.httpStatus ?? null,
           contentHash: result.contentHash ?? null,
           errorCode: result.errorCode,
-          errorSummary: result.errorSummary ?? null,
+          errorSummary: summaryForErrorCode(result.errorCode),
           finishedAt: result.finishedAt ?? new Date(),
         })
         .where(eq(ingestionRuns.id, runId));
@@ -194,4 +202,23 @@ export function createFortuneRepository<
       return result?.rank ?? null;
     },
   };
+}
+
+function summaryForErrorCode(
+  errorCode: IngestionErrorCode | null,
+): string | null {
+  if (errorCode === null) {
+    return null;
+  }
+
+  if (!Object.hasOwn(INGESTION_ERROR_SUMMARIES, errorCode)) {
+    throw new Error("Unsupported ingestion error code");
+  }
+
+  const summary = INGESTION_ERROR_SUMMARIES[errorCode];
+  if (summary.length > INGESTION_ERROR_SUMMARY_MAX_LENGTH) {
+    throw new Error("Ingestion error summary exceeds the application limit");
+  }
+
+  return summary;
 }

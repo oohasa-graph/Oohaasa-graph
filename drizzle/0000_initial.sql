@@ -42,7 +42,7 @@ CREATE TABLE "ingestion_runs" (
 	"http_status" integer,
 	"content_hash" text,
 	"error_code" text,
-	"error_summary" text,
+	"error_summary" varchar(120),
 	"started_at" timestamp with time zone NOT NULL,
 	"finished_at" timestamp with time zone
 );

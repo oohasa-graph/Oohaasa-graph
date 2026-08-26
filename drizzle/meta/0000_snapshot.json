@@ -1,5 +1,5 @@
 {
-  "id": "0cefd413-346a-47ba-b30a-09e5a5f0c16f",
+  "id": "d6cc9baa-6b86-4228-a17d-36034ad379ca",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -307,7 +307,7 @@
         },
         "error_summary": {
           "name": "error_summary",
-          "type": "text",
+          "type": "varchar(120)",
           "primaryKey": false,
           "notNull": false
         },
