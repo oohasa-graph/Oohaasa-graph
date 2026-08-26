@@ -67,7 +67,7 @@ For the private prototype:
 - **Database access:** Drizzle ORM with SQL migrations.
 - **HTML parsing:** Cheerio for Gogo.
 - **Charts:** Recharts for rank trends and sparklines; CSS for rank cards and race rows.
-- **Authentication:** Auth.js credentials flow using an environment-provided password hash and signed, HTTP-only session cookie.
+- **Authentication:** stable NextAuth 4/Auth.js credentials flow using an environment-provided password hash and signed, HTTP-only JWT session cookie.
 - **Unit/integration tests:** Vitest.
 - **Browser tests:** Playwright.
 - **Scheduling:** GitHub Actions scheduled workflow plus `workflow_dispatch`.
@@ -398,7 +398,8 @@ Required secrets and configuration:
 ### Vercel
 
 - Neon database connection string
-- `AUTH_SECRET`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
 - prototype username/password hash
 - `INGEST_SECRET`
 - optional contact string for the fetch user agent
