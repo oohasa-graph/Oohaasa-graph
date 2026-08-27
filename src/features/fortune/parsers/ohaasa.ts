@@ -93,6 +93,12 @@ export function parseOhaasa(payload: unknown, expectedDate: string): ParsedEditi
     };
   });
 
+  const uniqueSigns = new Set(fortunes.map((fortune) => fortune.zodiacCode));
+  const uniqueRanks = new Set(fortunes.map((fortune) => fortune.rank));
+  if (uniqueSigns.size !== 12 || uniqueRanks.size !== 12) {
+    throw new InvalidEditionError("Ohaasa signs and ranks must be unique");
+  }
+
   return {
     source: "ohaasa",
     editionDate,

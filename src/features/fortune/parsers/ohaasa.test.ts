@@ -71,6 +71,26 @@ describe("parseOhaasa", () => {
     expect(parse).not.toThrow(/Do not expose this source value/);
   });
 
+  it("rejects duplicate zodiac signs as a sanitized invalid edition", () => {
+    const malformed = structuredClone(fixture);
+    malformed[0].detail[1].horoscope_st = malformed[0].detail[0].horoscope_st;
+    const parse = () => parseOhaasa(malformed, "2026-08-26");
+
+    expect(parse).toThrow(InvalidEditionError);
+    expect(parse).toThrow("Ohaasa signs and ranks must be unique");
+    expect(parse).not.toThrow(/01/);
+  });
+
+  it("rejects duplicate ranks as a sanitized invalid edition", () => {
+    const malformed = structuredClone(fixture);
+    malformed[0].detail[1].ranking_no = malformed[0].detail[0].ranking_no;
+    const parse = () => parseOhaasa(malformed, "2026-08-26");
+
+    expect(parse).toThrow(InvalidEditionError);
+    expect(parse).toThrow("Ohaasa signs and ranks must be unique");
+    expect(parse).not.toThrow(/rank 4/i);
+  });
+
   it("rejects impossible source dates as sanitized invalid editions", () => {
     const malformed = structuredClone(fixture);
     malformed[0].onair_date = "20260230";
