@@ -15,6 +15,7 @@ import {
 
 const DATE_RE = /(\d{1,2})月(\d{1,2})日（(Sun|Mon|Tue|Wed|Thu|Fri|Sat)）/;
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const MAX_SOURCE_DATE_DISTANCE_MS = 183 * 24 * 60 * 60 * 1_000;
 const WINNER_BY_CLASS: Readonly<Record<string, WinnerCategory>> = Object.freeze({
   overall: "overall",
   money: "money",
@@ -32,30 +33,53 @@ function sourceDateFromTitle(
   expectedDate: string,
 ): { editionDate: string; sourceDateLabel: string } {
   const match = title.match(DATE_RE);
-  const expectedMatch = expectedDate.match(/^(\d{4})-\d{2}-\d{2}$/);
+  const expectedMatch = expectedDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match || !expectedMatch) {
     return invalid("Gogo source date is invalid");
   }
 
-  const year = Number(expectedMatch[1]);
-  const month = Number(match[1]);
-  const day = Number(match[2]);
-  const weekday = match[3];
-  const date = new Date(Date.UTC(year, month - 1, day));
-
+  const expectedYear = Number(expectedMatch[1]);
+  const expectedMonth = Number(expectedMatch[2]);
+  const expectedDay = Number(expectedMatch[3]);
+  const targetDate = new Date(Date.UTC(expectedYear, expectedMonth - 1, expectedDay));
   if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
+    targetDate.getUTCFullYear() !== expectedYear ||
+    targetDate.getUTCMonth() !== expectedMonth - 1 ||
+    targetDate.getUTCDate() !== expectedDay
   ) {
     return invalid("Gogo source date is invalid");
   }
-  if (WEEKDAYS[date.getUTCDay()] !== weekday) {
-    return invalid("Gogo source weekday is invalid");
+
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  const weekday = match[3];
+  const validCandidates = [expectedYear - 1, expectedYear, expectedYear + 1]
+    .map((year) => new Date(Date.UTC(year, month - 1, day)))
+    .filter(
+      (date) =>
+        date.getUTCMonth() === month - 1 && date.getUTCDate() === day,
+    );
+  if (validCandidates.length === 0) {
+    return invalid("Gogo source date is invalid");
   }
 
+  const weekdayCandidates = validCandidates.filter(
+    (date) =>
+      WEEKDAYS[date.getUTCDay()] === weekday &&
+      Math.abs(date.getTime() - targetDate.getTime()) <= MAX_SOURCE_DATE_DISTANCE_MS,
+  );
+  if (weekdayCandidates.length === 0) {
+    return invalid("Gogo source weekday is invalid");
+  }
+  const sourceDate = weekdayCandidates.reduce((nearest, candidate) =>
+    Math.abs(candidate.getTime() - targetDate.getTime()) <
+    Math.abs(nearest.getTime() - targetDate.getTime())
+      ? candidate
+      : nearest,
+  );
+
   return {
-    editionDate: `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+    editionDate: sourceDate.toISOString().slice(0, 10),
     sourceDateLabel: match[0],
   };
 }
@@ -96,7 +120,7 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
       .find("img")
       .toArray()
       .map((image) => $(image).attr("src") ?? "")
-      .map((source) => source.match(/rank-(\d+)\.png(?:[?#].*)?$/))
+      .map((source) => source.match(/(?:^|\/)rank-(\d+)\.png(?:[?#].*)?$/))
       .filter((match): match is RegExpMatchArray => match !== null);
     if (matchingRankSources.length !== 1) {
       return invalid("Gogo rank is invalid");

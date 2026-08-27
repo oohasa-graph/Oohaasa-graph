@@ -82,6 +82,20 @@ describe("parseGogo", () => {
     });
   });
 
+  it("preserves a stale source date from the prior year", () => {
+    const priorYearHtml = html.replace("8月26日（Wed）", "12月31日（Thu）");
+    let thrown: unknown;
+
+    try {
+      parseGogo(priorYearHtml, "2027-01-01");
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(StaleSourceError);
+    expect(thrown).toMatchObject({ sourceDate: "2026-12-31" });
+  });
+
   it("rejects a source weekday that does not match its calendar date", () => {
     const parse = () => parseGogo(html.replace("Wed", "Thu"), "2026-08-26");
 
@@ -117,6 +131,15 @@ describe("parseGogo", () => {
     expect(parse).toThrow(InvalidEditionError);
     expect(parse).toThrow("Gogo signs and ranks must be unique");
     expect(parse).not.toThrow(/rank-1/);
+  });
+
+  it("rejects a rank token embedded in a longer basename", () => {
+    const malformed = html.replace("/invented/rank-1.png", "/invented/not-rank-1.png");
+    const parse = () => parseGogo(malformed, "2026-08-26");
+
+    expect(parse).toThrow(InvalidEditionError);
+    expect(parse).toThrow("Gogo rank is invalid");
+    expect(parse).not.toThrow(/not-rank/);
   });
 
   it("rejects unknown winner category tokens", () => {
