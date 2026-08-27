@@ -1,0 +1,54 @@
+name: Ingest daily fortune rankings
+
+on:
+  schedule:
+    - cron: "15 20 * * *"
+    - cron: "15 21 * * *"
+    - cron: "45 22 * * *"
+    - cron: "50 23 * * *"
+  workflow_dispatch:
+    inputs:
+      source:
+        type: choice
+        options: [all, ohaasa, gogo]
+        default: all
+      force:
+        type: boolean
+        default: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    env:
+      INGEST_URL: ${{ secrets.INGEST_URL }}
+      INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+    steps:
+      - name: Derive ingestion attempt
+        id: attempt
+        shell: bash
+        run: |
+          case "${{ github.event.schedule }}" in
+            "15 20 * * *") attempt="primary" ;;
+            "15 21 * * *") attempt="retry_1" ;;
+            "45 22 * * *") attempt="retry_2" ;;
+            "50 23 * * *") attempt="final" ;;
+            *) attempt="manual" ;;
+          esac
+          echo "attempt=$attempt" >> "$GITHUB_OUTPUT"
+
+      - name: Call protected ingestion endpoint
+        shell: bash
+        run: |
+          source_input="${{ github.event.inputs.source || 'all' }}"
+          force_input="${{ github.event.inputs.force || 'false' }}"
+          BODY=$(jq -n \
+            --arg attempt "${{ steps.attempt.outputs.attempt }}" \
+            --arg source "$source_input" \
+            --argjson force "$force_input" \
+            '{ attempt: $attempt, source: $source, force: $force }')
+
+          curl --fail-with-body --silent --show-error \
+            -X POST "$INGEST_URL" \
+            -H "Authorization: Bearer $INGEST_SECRET" \
+            -H "Content-Type: application/json" \
+            --data "$BODY"
