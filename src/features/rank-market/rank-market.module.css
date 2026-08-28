@@ -1,0 +1,381 @@
+.shell {
+  min-height: 100vh;
+  padding: 32px clamp(16px, 4vw, 56px) 56px;
+  color: #eef6ff;
+  background:
+    radial-gradient(circle at top left, rgba(48, 115, 255, 0.3), transparent 32rem),
+    linear-gradient(135deg, #07111f 0%, #0a172a 48%, #07101f 100%);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+
+.header h1 {
+  font-size: clamp(2rem, 5vw, 4.5rem);
+  letter-spacing: -0.06em;
+}
+
+.livePill,
+.kicker {
+  color: #6ee7f9;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.livePill {
+  display: inline-flex;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(110, 231, 249, 0.35);
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.generated {
+  color: #9fb2ce;
+  font-size: 0.9rem;
+}
+
+.controls {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.sourceToggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 24px;
+  background: rgba(15, 23, 42, 0.74);
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.22);
+}
+
+.sourceButton,
+.sourceButtonActive,
+.signButton,
+.signButtonActive {
+  border: 0;
+  cursor: pointer;
+  color: #cbd5e1;
+  background: transparent;
+  transition: transform 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.sourceButton,
+.sourceButtonActive {
+  padding: 16px;
+  border-radius: 18px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.sourceButtonActive {
+  color: #06111f;
+  background: linear-gradient(135deg, #67e8f9, #a7f3d0);
+}
+
+.signPicker {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 2px 12px;
+}
+
+.signButton,
+.signButtonActive {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.signButtonActive {
+  color: #ffffff;
+  border-color: rgba(96, 165, 250, 0.8);
+  background: rgba(37, 99, 235, 0.65);
+}
+
+.sourceButton:hover,
+.sourceButtonActive:hover,
+.signButton:hover,
+.signButtonActive:hover {
+  transform: translateY(-1px);
+}
+
+.sourceButton:focus-visible,
+.sourceButtonActive:focus-visible,
+.signButton:focus-visible,
+.signButtonActive:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
+}
+
+.hero,
+.panel,
+.comparisonCard {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 28px;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(16px);
+}
+
+.hero {
+  padding: clamp(24px, 5vw, 48px);
+  margin-bottom: 18px;
+}
+
+.hero h1 {
+  margin: 8px 0 14px;
+  font-size: clamp(3rem, 11vw, 8rem);
+  line-height: 0.95;
+  letter-spacing: -0.08em;
+}
+
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.heroMeta span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  color: #dbeafe;
+  background: rgba(30, 64, 175, 0.45);
+}
+
+.heroComment {
+  max-width: 760px;
+  color: #cbd5e1;
+  font-size: 1.15rem;
+}
+
+.comparisonGrid,
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.comparisonGrid {
+  margin-bottom: 18px;
+}
+
+.comparisonCard,
+.panel {
+  padding: 22px;
+}
+
+.comparisonCard {
+  display: grid;
+  gap: 8px;
+}
+
+.comparisonCard span,
+.comparisonCard small,
+.metaList dt {
+  color: #94a3b8;
+}
+
+.comparisonCard strong {
+  font-size: 2.5rem;
+  letter-spacing: -0.05em;
+}
+
+.panelHeader {
+  margin-bottom: 18px;
+}
+
+.sideStack {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.statusCard {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 22px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.currentBadge,
+.staleBadge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.currentBadge {
+  color: #042f2e;
+  background: #99f6e4;
+}
+
+.staleBadge {
+  color: #451a03;
+  background: #fed7aa;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metricCard {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 18px;
+  background: rgba(2, 6, 23, 0.34);
+}
+
+.metricCard span {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.metricCard strong {
+  font-size: 1rem;
+}
+
+.rangeControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.rangeControls button {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.72);
+  cursor: pointer;
+}
+
+.rangeControls button[aria-pressed="true"] {
+  color: #06111f;
+  background: #67e8f9;
+}
+
+.chartFrame {
+  height: 240px;
+  min-width: 0;
+}
+
+.adviceList {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 0 18px;
+  color: #cbd5e1;
+}
+
+.scoreGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.scoreGrid span,
+.winnerLabels {
+  color: #cbd5e1;
+}
+
+.panel h2 {
+  margin-top: 6px;
+  font-size: 1.4rem;
+}
+
+.metaList {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.metaList div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.raceList {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.raceItem,
+.raceItemActive {
+  display: grid;
+  grid-template-columns: 48px minmax(90px, 1fr) 1.4fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 16px;
+  color: #cbd5e1;
+  background: rgba(2, 6, 23, 0.34);
+}
+
+.raceItemActive {
+  color: #ffffff;
+  background: rgba(37, 99, 235, 0.36);
+}
+
+.raceTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.88);
+}
+
+.raceTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #60a5fa, #67e8f9);
+}
+
+@media (max-width: 800px) {
+  .header,
+  .comparisonGrid,
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    display: grid;
+  }
+
+  .metricsGrid,
+  .raceItem,
+  .raceItemActive {
+    grid-template-columns: 1fr;
+  }
+
+  .raceTrack {
+    grid-column: 1 / -1;
+  }
+}
