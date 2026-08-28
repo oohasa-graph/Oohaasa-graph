@@ -3,8 +3,12 @@
 import { useMemo, useState } from "react";
 
 import { SOURCES, ZODIAC_CODES, type Source, type ZodiacCode } from "@/features/fortune/domain";
+import { DataStatus } from "@/features/rank-market/components/data-status";
+import { FortunePanel } from "@/features/rank-market/components/fortune-panel";
 import { RankHero } from "@/features/rank-market/components/rank-hero";
+import { RankMetrics } from "@/features/rank-market/components/rank-metrics";
 import { RankRace } from "@/features/rank-market/components/rank-race";
+import { RankTrend } from "@/features/rank-market/components/rank-trend";
 import { SignPicker } from "@/features/rank-market/components/sign-picker";
 import { SourceToggle } from "@/features/rank-market/components/source-toggle";
 import type { RankMarketData } from "@/features/rank-market/types";
@@ -33,9 +37,16 @@ function initialSource(data: RankMarketData): Source {
   return SOURCES.find((source) => data.sources[source].latest !== null) ?? "ohaasa";
 }
 
-export function RankMarket({ initialData }: { initialData: RankMarketData }) {
+export function RankMarket({
+  initialData,
+  currentDate = initialData.generatedAt.slice(0, 10),
+}: {
+  initialData: RankMarketData;
+  currentDate?: string;
+}) {
   const [source, setSource] = useState<Source>(() => initialSource(initialData));
   const [selectedZodiac, setSelectedZodiac] = useState<ZodiacCode>(initialZodiac);
+  const [trendRange, setTrendRange] = useState<7 | 30 | 90>(30);
 
   const selectedSource = initialData.sources[source];
   const entries = useMemo(
@@ -90,22 +101,27 @@ export function RankMarket({ initialData }: { initialData: RankMarketData }) {
       </section>
 
       <section className={styles.detailGrid}>
-        <article className={styles.panel}>
-          <p className={styles.kicker}>Selected market</p>
-          <h2>Selected signal</h2>
-          <p>{selectedFortune?.comment ?? "No complete edition yet."}</p>
-          <dl className={styles.metaList}>
-            <div>
-              <dt>Lucky hint</dt>
-              <dd>{selectedFortune?.luckyHint ?? selectedFortune?.luckyKey ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>Lucky color</dt>
-              <dd>{selectedFortune?.luckyColor ?? "—"}</dd>
-            </div>
-          </dl>
-        </article>
-        <RankRace entries={entries} selectedZodiac={selectedZodiac} />
+        <div className={styles.sideStack}>
+          <DataStatus
+            source={source}
+            editionDate={selectedSource.latest?.editionDate ?? null}
+            currentDate={currentDate}
+          />
+          <RankMetrics
+            history={selectedSource.history[selectedZodiac]}
+            movement={selectedSource.movements[selectedZodiac]}
+            biggestMover={selectedSource.biggestMover}
+          />
+          <FortunePanel source={source} fortune={selectedFortune} />
+        </div>
+        <div className={styles.sideStack}>
+          <RankTrend
+            points={selectedSource.history[selectedZodiac]}
+            range={trendRange}
+            onRangeChange={setTrendRange}
+          />
+          <RankRace entries={entries} selectedZodiac={selectedZodiac} />
+        </div>
       </section>
     </main>
   );
