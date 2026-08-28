@@ -2,7 +2,7 @@
 
 ## Status
 
-This is a private prototype. Keep authentication enabled and public access disabled until content-rights review approves any broader launch.
+The rank UI is public-viewing by owner approval. Keep the internal ingestion endpoint secret-protected, and re-check content rights before broader promotion or commercial launch.
 
 ## Provision Neon
 
@@ -22,11 +22,14 @@ Set these in the Vercel project:
 - `DATABASE_URL`
 - `INGEST_SECRET` — long random value shared only with GitHub Actions.
 - `SOURCE_USER_AGENT` — identifying user agent with contact information.
+- `DATA_FIXTURE_MODE=0` or unset. Never set `DATA_FIXTURE_MODE=1` in production; the app throws if fixture mode is requested while `NODE_ENV=production`.
+
+Optional only if private routes are re-enabled later:
+
 - `PRIVATE_USERNAME`
 - `PRIVATE_PASSWORD_HASH` — bcrypt hash, not the plaintext password.
 - `NEXTAUTH_SECRET` — at least 32 random characters.
 - `NEXTAUTH_URL` — production deployment URL.
-- `DATA_FIXTURE_MODE=0` or unset. Never set `DATA_FIXTURE_MODE=1` in production; the app throws if fixture mode is requested while `NODE_ENV=production`.
 
 ## GitHub scheduler secrets
 
@@ -97,11 +100,10 @@ If HTML/JSON tokens change, ingestion should fail closed. Update invented fixtur
 
 After deployment:
 
-1. Confirm unauthenticated `/` redirects to `/login`.
-2. Sign in with the configured private account.
-3. Trigger GitHub Actions `workflow_dispatch` with `source=all`, `force=false`.
-4. Confirm the response has one terminal result per source and no fortune prose.
-5. Confirm Ohaasa/Gogo switching updates the hero, race, trend chart, metrics, and fortune panel.
-6. Confirm displayed edition dates match persisted Japanese source dates.
-7. Confirm no source images/logos appear.
-8. Leave public access disabled pending rights review.
+1. Confirm public `/` shows the rank-market UI without sign-in.
+2. Trigger GitHub Actions `workflow_dispatch` with `source=all`, `force=false`.
+3. Confirm the response has one terminal result per source and no fortune prose.
+4. Confirm Ohaasa/Gogo switching updates the hero, race, trend chart, metrics, and fortune panel.
+5. Confirm displayed edition dates match persisted Japanese source dates.
+6. Confirm no source images/logos appear.
+7. Keep `/api/internal/ingest` protected by `INGEST_SECRET`.

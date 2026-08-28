@@ -34,7 +34,7 @@ describe("RankMarket", () => {
 
   it("switches the entire experience from Ohaasa to Gogo", async () => {
     const user = userEvent.setup();
-    render(<RankMarket initialData={dashboardFixture} />);
+    render(<RankMarket initialData={dashboardFixture} currentDate="2026-08-26" />);
 
     expect(screen.getByRole("heading", { name: /#9.*12/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Gogo" }));
@@ -45,7 +45,7 @@ describe("RankMarket", () => {
 
   it("changes zodiac and persists the choice", async () => {
     const user = userEvent.setup();
-    render(<RankMarket initialData={dashboardFixture} />);
+    render(<RankMarket initialData={dashboardFixture} currentDate="2026-08-26" />);
 
     await user.click(screen.getByRole("button", { name: "Aquarius" }));
 

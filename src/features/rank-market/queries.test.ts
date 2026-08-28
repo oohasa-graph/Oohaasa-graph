@@ -23,6 +23,34 @@ afterEach(async () => {
 });
 
 describe("getRankMarketData", () => {
+  it("builds history through the current JST calendar date even when latest capture is stale", async () => {
+    const { client, db, repository } = await setupDb();
+    clients.push(client);
+
+    await repository.saveEdition(
+      makeParsedEdition({ source: "gogo", date: "2026-08-24", libraRank: 6 }),
+      metadata("stale-previous"),
+    );
+    await repository.saveEdition(
+      makeParsedEdition({ source: "gogo", date: "2026-08-25", libraRank: 4 }),
+      metadata("stale-latest"),
+    );
+
+    const data = await getRankMarketData({
+      days: 3,
+      db,
+      generatedAt: new Date("2026-08-25T20:15:00Z"),
+    });
+
+    expect(data.sources.gogo.latest?.editionDate).toBe("2026-08-25");
+    expect(data.sources.gogo.history.libra).toEqual([
+      { date: "2026-08-24", rank: 6 },
+      { date: "2026-08-25", rank: 4 },
+      { date: "2026-08-26", rank: null },
+    ]);
+    expect(data.sources.gogo.movements.libra).toEqual({ places: 2, direction: "up" });
+  });
+
   it("keeps sources independent and includes all twelve latest entries", async () => {
     const { client, db, repository } = await setupDb();
     clients.push(client);

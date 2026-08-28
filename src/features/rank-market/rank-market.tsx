@@ -39,10 +39,10 @@ function initialSource(data: RankMarketData): Source {
 
 export function RankMarket({
   initialData,
-  currentDate = initialData.generatedAt.slice(0, 10),
+  currentDate,
 }: {
   initialData: RankMarketData;
-  currentDate?: string;
+  currentDate: string;
 }) {
   const [source, setSource] = useState<Source>(() => initialSource(initialData));
   const [selectedZodiac, setSelectedZodiac] = useState<ZodiacCode>(initialZodiac);

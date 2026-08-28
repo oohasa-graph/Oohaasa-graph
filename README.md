@@ -1,14 +1,14 @@
 # Oohaasa / Gogo Fortune Rank Market
 
-Private prototype for daily zodiac ranking history from Ohaasa and Gogo. The app stores each source independently, requires sign-in, and presents ranks in a dark market-style interface without combined ranks, odds, betting, probabilities, broadcaster images, or logos.
+Owner-approved public-viewing prototype for daily zodiac ranking history from Ohaasa and Gogo. The app stores each source independently and presents ranks in a dark market-style interface without combined ranks, odds, betting, probabilities, broadcaster images, or logos.
 
-Public launch remains blocked pending content-rights review.
+Internal ingestion remains protected by a bearer secret. Re-check content rights before broader promotion or commercial launch.
 
 ## Stack
 
 - Next.js 16 App Router, React 19, TypeScript
 - Neon Postgres with Drizzle ORM
-- NextAuth 4 credentials auth
+- NextAuth 4 dependency retained, but `/` is public
 - Vitest, PGlite, Testing Library, Playwright
 - GitHub Actions scheduler for Vercel Hobby deployments
 
@@ -19,11 +19,7 @@ npm ci
 cp .env.example .env.local
 ```
 
-Fill `.env.local` with private values. Generate a bcrypt hash for the private password, for example:
-
-```bash
-node -e "const { hashSync } = require('bcryptjs'); console.log(hashSync('your password', 12))"
-```
+Fill `.env.local` with database and ingestion values. Auth variables are optional unless you re-enable private routes/tests.
 
 Run locally:
 
@@ -31,7 +27,7 @@ Run locally:
 npm run dev
 ```
 
-The private app is served at `/` and redirects unauthenticated users to `/login`.
+The public app is served at `/`.
 
 ## Verification
 

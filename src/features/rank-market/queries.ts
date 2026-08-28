@@ -1,17 +1,31 @@
-import { and, asc, desc, eq, gte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, lte } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import { getDb } from "@/db/client";
 import { editions, fortuneEntries } from "@/db/schema";
 import * as schema from "@/db/schema";
-import { SOURCES, ZODIAC_CODES, type ParsedFortune, type Source, type ZodiacCode } from "@/features/fortune/domain";
-import { buildCalendarHistory, getBiggestMover, getMovement } from "@/features/rank-market/metrics";
-import type { RankHistoryPoint, RankMarketData, RankMovement, SourceEditionView } from "@/features/rank-market/types";
+import {
+  SOURCES,
+  ZODIAC_CODES,
+  type ParsedFortune,
+  type Source,
+  type ZodiacCode,
+} from "@/features/fortune/domain";
+import {
+  buildCalendarHistory,
+  getBiggestMover,
+  getMovement,
+} from "@/features/rank-market/metrics";
+import type {
+  RankHistoryPoint,
+  RankMarketData,
+  RankMovement,
+  SourceEditionView,
+} from "@/features/rank-market/types";
+import { getJstDate } from "@/lib/time/jst";
 
-type RankMarketDb<TQueryResult extends PgQueryResultHKT = PgQueryResultHKT> = PgDatabase<
-  TQueryResult,
-  typeof schema
->;
+type RankMarketDb<TQueryResult extends PgQueryResultHKT = PgQueryResultHKT> =
+  PgDatabase<TQueryResult, typeof schema>;
 
 type Row = {
   source: Source;
@@ -34,6 +48,7 @@ type Options<TQueryResult extends PgQueryResultHKT = PgQueryResultHKT> = {
   days: number;
   db?: RankMarketDb<TQueryResult>;
   generatedAt?: Date;
+  currentDate?: string;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -88,32 +103,56 @@ function toFortune(row: Row): ParsedFortune {
   };
 }
 
-async function getRecentRows<TQueryResult extends PgQueryResultHKT>(
+function rowSelection() {
+  return {
+    source: editions.source,
+    editionDate: editions.editionDate,
+    zodiacCode: fortuneEntries.zodiacCode,
+    rank: fortuneEntries.rank,
+    comment: fortuneEntries.comment,
+    adviceLines: fortuneEntries.adviceLines,
+    luckyHint: fortuneEntries.luckyHint,
+    luckyColor: fortuneEntries.luckyColor,
+    luckyKey: fortuneEntries.luckyKey,
+    moneyScore: fortuneEntries.moneyScore,
+    loveScore: fortuneEntries.loveScore,
+    workScore: fortuneEntries.workScore,
+    healthScore: fortuneEntries.healthScore,
+    winnerCategories: fortuneEntries.winnerCategories,
+  };
+}
+
+async function getRowsInWindow<TQueryResult extends PgQueryResultHKT>(
   db: RankMarketDb<TQueryResult>,
   source: Source,
   startDate: string,
+  endDate: string,
 ): Promise<Row[]> {
   return db
-    .select({
-      source: editions.source,
-      editionDate: editions.editionDate,
-      zodiacCode: fortuneEntries.zodiacCode,
-      rank: fortuneEntries.rank,
-      comment: fortuneEntries.comment,
-      adviceLines: fortuneEntries.adviceLines,
-      luckyHint: fortuneEntries.luckyHint,
-      luckyColor: fortuneEntries.luckyColor,
-      luckyKey: fortuneEntries.luckyKey,
-      moneyScore: fortuneEntries.moneyScore,
-      loveScore: fortuneEntries.loveScore,
-      workScore: fortuneEntries.workScore,
-      healthScore: fortuneEntries.healthScore,
-      winnerCategories: fortuneEntries.winnerCategories,
-    })
+    .select(rowSelection())
     .from(editions)
     .innerJoin(fortuneEntries, eq(fortuneEntries.editionId, editions.id))
-    .where(and(eq(editions.source, source), gte(editions.editionDate, startDate)))
+    .where(
+      and(
+        eq(editions.source, source),
+        gte(editions.editionDate, startDate),
+        lte(editions.editionDate, endDate),
+      ),
+    )
     .orderBy(asc(editions.source), asc(editions.editionDate), asc(fortuneEntries.rank));
+}
+
+async function getRowsForDate<TQueryResult extends PgQueryResultHKT>(
+  db: RankMarketDb<TQueryResult>,
+  source: Source,
+  date: string,
+): Promise<Row[]> {
+  return db
+    .select(rowSelection())
+    .from(editions)
+    .innerJoin(fortuneEntries, eq(fortuneEntries.editionId, editions.id))
+    .where(and(eq(editions.source, source), eq(editions.editionDate, date)))
+    .orderBy(asc(fortuneEntries.rank));
 }
 
 async function getLatestDate<TQueryResult extends PgQueryResultHKT>(
@@ -130,19 +169,52 @@ async function getLatestDate<TQueryResult extends PgQueryResultHKT>(
   return latest?.editionDate ?? null;
 }
 
-function buildSourceView(rows: Row[], source: Source, startDate: string, endDate: string) {
+async function getPreviousDate<TQueryResult extends PgQueryResultHKT>(
+  db: RankMarketDb<TQueryResult>,
+  source: Source,
+  latestDate: string,
+): Promise<string | null> {
+  const [previous] = await db
+    .select({ editionDate: editions.editionDate })
+    .from(editions)
+    .where(and(eq(editions.source, source), lt(editions.editionDate, latestDate)))
+    .orderBy(desc(editions.editionDate))
+    .limit(1);
+
+  return previous?.editionDate ?? null;
+}
+
+function rowsByDate(rows: Row[]): Map<string, ParsedFortune[]> {
   const byDate = new Map<string, ParsedFortune[]>();
   for (const row of rows) {
     const entries = byDate.get(row.editionDate) ?? [];
     entries.push(toFortune(row));
     byDate.set(row.editionDate, entries);
   }
+  return byDate;
+}
 
-  const dates = [...byDate.keys()].sort();
-  const latestDate = dates.at(-1) ?? null;
-  const previousDate = dates.at(-2) ?? null;
-  const latestEntries = latestDate ? [...(byDate.get(latestDate) ?? [])].sort((a, b) => a.rank - b.rank) : [];
-  const previousEntries = previousDate ? byDate.get(previousDate) ?? [] : [];
+function buildSourceView({
+  historyRows,
+  latestRows,
+  previousRows,
+  source,
+  startDate,
+  endDate,
+  latestDate,
+}: {
+  historyRows: Row[];
+  latestRows: Row[];
+  previousRows: Row[];
+  source: Source;
+  startDate: string;
+  endDate: string;
+  latestDate: string | null;
+}) {
+  const historyByDate = rowsByDate(historyRows);
+  const historyDates = [...historyByDate.keys()].sort();
+  const latestEntries = latestRows.map(toFortune).sort((a, b) => a.rank - b.rank);
+  const previousEntries = previousRows.map(toFortune);
   const latest: SourceEditionView | null = latestDate
     ? { source, editionDate: latestDate, entries: latestEntries }
     : null;
@@ -150,10 +222,12 @@ function buildSourceView(rows: Row[], source: Source, startDate: string, endDate
   const history = emptyHistory();
   const movements = emptyMovements();
   for (const zodiacCode of ZODIAC_CODES) {
-    const captured = dates
+    const captured = historyDates
       .map((date) => ({
         date,
-        rank: byDate.get(date)?.find((entry) => entry.zodiacCode === zodiacCode)?.rank ?? null,
+        rank:
+          historyByDate.get(date)?.find((entry) => entry.zodiacCode === zodiacCode)?.rank ??
+          null,
       }))
       .filter((point) => point.rank !== null);
     history[zodiacCode] = buildCalendarHistory(startDate, endDate, captured);
@@ -172,12 +246,16 @@ function buildSourceView(rows: Row[], source: Source, startDate: string, endDate
   };
 }
 
-export async function getRankMarketData<TQueryResult extends PgQueryResultHKT = PgQueryResultHKT>({
+export async function getRankMarketData<
+  TQueryResult extends PgQueryResultHKT = PgQueryResultHKT,
+>({
   days,
   db = getDb() as RankMarketDb<TQueryResult>,
   generatedAt = new Date(),
+  currentDate = getJstDate(generatedAt),
 }: Options<TQueryResult>): Promise<RankMarketData> {
   const boundedDays = Math.max(1, Math.min(90, Math.floor(days)));
+  const startDate = startDateFor(currentDate, boundedDays);
   const output = {
     generatedAt: generatedAt.toISOString(),
     sources: {},
@@ -185,19 +263,20 @@ export async function getRankMarketData<TQueryResult extends PgQueryResultHKT = 
 
   for (const source of SOURCES) {
     const latestDate = await getLatestDate(db, source);
-    if (!latestDate) {
-      output.sources[source] = {
-        latest: null,
-        history: emptyHistory(),
-        movements: emptyMovements(),
-        biggestMover: null,
-      };
-      continue;
-    }
+    const latestRows = latestDate ? await getRowsForDate(db, source, latestDate) : [];
+    const previousDate = latestDate ? await getPreviousDate(db, source, latestDate) : null;
+    const previousRows = previousDate ? await getRowsForDate(db, source, previousDate) : [];
+    const historyRows = await getRowsInWindow(db, source, startDate, currentDate);
 
-    const startDate = startDateFor(latestDate, boundedDays);
-    const rows = await getRecentRows(db, source, startDate);
-    output.sources[source] = buildSourceView(rows, source, startDate, latestDate);
+    output.sources[source] = buildSourceView({
+      historyRows,
+      latestRows,
+      previousRows,
+      source,
+      startDate,
+      endDate: currentDate,
+      latestDate,
+    });
   }
 
   return output;
