@@ -29,7 +29,9 @@ export function RankHero({
   return (
     <section className={styles.hero}>
       <p className={styles.kicker}>What rank am I today?</p>
-      <h1>
+      <h1
+        aria-label={`What rank am I today? ${ZODIAC_LABELS[fortune.zodiacCode]} #${fortune.rank} / 12`}
+      >
         {ZODIAC_LABELS[fortune.zodiacCode]} #{fortune.rank} / 12
       </h1>
       <div className={styles.heroMeta}>

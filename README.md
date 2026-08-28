@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Oohaasa / Gogo Fortune Rank Market
 
-## Getting Started
+Private prototype for daily zodiac ranking history from Ohaasa and Gogo. The app stores each source independently, requires sign-in, and presents ranks in a dark market-style interface without combined ranks, odds, betting, probabilities, broadcaster images, or logos.
 
-First, run the development server:
+Public launch remains blocked pending content-rights review.
+
+## Stack
+
+- Next.js 16 App Router, React 19, TypeScript
+- Neon Postgres with Drizzle ORM
+- NextAuth 4 credentials auth
+- Vitest, PGlite, Testing Library, Playwright
+- GitHub Actions scheduler for Vercel Hobby deployments
+
+## Local setup
+
+```bash
+npm ci
+cp .env.example .env.local
+```
+
+Fill `.env.local` with private values. Generate a bcrypt hash for the private password, for example:
+
+```bash
+node -e "const { hashSync } = require('bcryptjs'); console.log(hashSync('your password', 12))"
+```
+
+Run locally:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The private app is served at `/` and redirects unauthenticated users to `/login`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+```
 
-## Learn More
+Playwright uses `DATA_FIXTURE_MODE=1` through `playwright.config.ts` and never fetches live source content.
 
-To learn more about Next.js, take a look at the following resources:
+## Database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Generate and apply migrations:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run db:generate
+npm run db:migrate
+```
 
-## Deploy on Vercel
+Use Neon for production `DATABASE_URL`; PGlite is used only for tests.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Ingestion
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+GitHub Actions calls the protected Vercel endpoint:
+
+```http
+POST /api/internal/ingest
+Authorization: Bearer $INGEST_SECRET
+Content-Type: application/json
+
+{ "attempt": "primary", "source": "all", "force": false }
+```
+
+Scheduled attempts are 05:15, 06:15, 07:45, and 08:50 JST via UTC crons in `.github/workflows/ingest.yml`. Ohaasa is skipped on weekends and Japanese public holidays; Gogo is expected daily.
+
+See `docs/operations.md` for provisioning, scheduler secrets, manual recovery, and stale/invalid diagnosis.

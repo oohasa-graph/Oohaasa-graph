@@ -1,10 +1,10 @@
 import { RankMarket } from "@/features/rank-market/rank-market";
-import { getRankMarketData } from "@/features/rank-market/queries";
+import { loadRankMarketData } from "@/features/rank-market/load-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const data = await getRankMarketData({ days: 90 });
+  const data = await loadRankMarketData();
 
   return <RankMarket initialData={data} />;
 }
