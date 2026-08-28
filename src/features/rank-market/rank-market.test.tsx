@@ -32,6 +32,12 @@ describe("RankMarket", () => {
     cleanup();
   });
 
+  it("labels the public prototype accurately", () => {
+    render(<RankMarket initialData={dashboardFixture} currentDate="2026-08-26" />);
+
+    expect(screen.getByText("Live public prototype")).toBeInTheDocument();
+  });
+
   it("switches the entire experience from Ohaasa to Gogo", async () => {
     const user = userEvent.setup();
     render(<RankMarket initialData={dashboardFixture} currentDate="2026-08-26" />);

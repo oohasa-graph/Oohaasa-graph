@@ -67,7 +67,7 @@ export function RankMarket({
     <main className={styles.shell}>
       <header className={styles.header}>
         <div>
-          <p className={styles.livePill}>Live private prototype</p>
+          <p className={styles.livePill}>Live public prototype</p>
           <h1>Fortune rank market</h1>
         </div>
         <p className={styles.generated}>Generated {initialData.generatedAt}</p>
