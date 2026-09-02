@@ -23,6 +23,22 @@ jobs:
       INGEST_URL: ${{ secrets.INGEST_URL }}
       INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
     steps:
+      - name: Validate ingestion configuration
+        shell: bash
+        run: |
+          missing=false
+          if [[ -z "${INGEST_URL:-}" ]]; then
+            echo "::error::Required Actions secret INGEST_URL is not configured"
+            missing=true
+          fi
+          if [[ -z "${INGEST_SECRET:-}" ]]; then
+            echo "::error::Required Actions secret INGEST_SECRET is not configured"
+            missing=true
+          fi
+          if [[ "$missing" == "true" ]]; then
+            exit 1
+          fi
+
       - name: Derive ingestion attempt
         id: attempt
         shell: bash
@@ -48,6 +64,8 @@ jobs:
             '{ attempt: $attempt, source: $source, force: $force }')
 
           curl --fail-with-body --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 120 \
             -X POST "$INGEST_URL" \
             -H "Authorization: Bearer $INGEST_SECRET" \
             -H "Content-Type: application/json" \
