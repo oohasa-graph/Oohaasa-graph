@@ -45,6 +45,7 @@ export type IngestionResult = {
   sourceDate: string | null;
   runId: string;
   errorCode: IngestionErrorCode | null;
+  diagnostic?: string;
 };
 
 type ResultWithoutRunId = Omit<IngestionResult, "runId">;
@@ -207,6 +208,9 @@ export async function ingestSource(
         status: failure.status,
         sourceDate: failure.sourceDate,
         errorCode: failure.code,
+        ...(attempt === "manual" && error instanceof InvalidEditionError
+          ? { diagnostic: error.message }
+          : {}),
       },
       {
         httpStatus,
