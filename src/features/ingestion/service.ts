@@ -218,7 +218,12 @@ export async function ingestSource(
               $(node).text().match(/\d{1,2}月\d{1,2}日（(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)）/)?.[0] ?? "none",
             );
             const details = $("#ohitsuji");
-            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; luckyBoxes=${details.find(".lucky-box").length}; directLuckyBoxes=${details.children(".lucky-box").length}; colors=${details.find(".color-txt").length}; keys=${details.find(".key-txt").length}; reads=${details.find(".read").length}`;
+            const classes = (node: Parameters<ReturnType<typeof load>>[0]) =>
+              ($(node).attr("class") ?? "").replace(/[^a-zA-Z0-9 _-]/g, "").slice(0, 80);
+            const boxes = details.find(".lucky-box").toArray().map((box) =>
+              `${classes(box)}[${$(box).children().toArray().map(classes).join(",")}]`,
+            );
+            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; luckyBoxes=${boxes.join("|")}; colors=${details.find(".color-txt").length}; keys=${details.find(".key-txt").length}; reads=${details.find(".read").length}`;
           })()) }
           : {}),
       },
