@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Runs against DATA_FIXTURE_MODE=1 (invented fixture text). Every test fails on uncaught page errors
+// Runs against DATA_FIXTURE_MODE=1 or sparse (invented fixture text). Every test fails on uncaught page errors
 // and on console errors such as hydration mismatches.
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -12,6 +12,46 @@ function watchErrors(page: Page): string[] {
 }
 
 const watchlistButton = (page: Page, name: string) => page.getByRole("table").getByRole("button", { name, exact: true });
+
+test("selected empty calendar stamps stay dashed without a solid data ring", async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto("/board?sign=libra&source=ohaasa&range=1m");
+  const gap = page.locator("[data-row='libra'] [data-stamp='2026-10-14']");
+  const recorded = page.locator("[data-row='libra'] [data-stamp='2026-10-26']");
+  await expect(gap).toHaveAttribute("data-empty");
+  await expect(gap).toHaveCSS("border-top-style", "dashed");
+  await expect(gap).toHaveCSS("box-shadow", "none");
+  await expect(recorded).not.toHaveAttribute("data-empty");
+  await expect(recorded).not.toHaveCSS("box-shadow", "none");
+  await page.getByRole("group", { name: "順位レース" }).getByRole("button", { name: "しし座" }).click();
+  await expect(recorded).toHaveCSS("box-shadow", "none");
+  await expect(page.locator("[data-row='leo'] [data-stamp='2026-10-26']")).not.toHaveCSS("box-shadow", "none");
+  expect(errors).toEqual([]);
+});
+
+test("sparse board keeps isolated ranks visible and periods explicit", async ({ page, baseURL }) => {
+  test.skip(process.env.DATA_FIXTURE_MODE !== "sparse", "requires the sparse fixture; CI runs this separately");
+  const errors = watchErrors(page);
+  await page.context().addCookies([{ name: "rm-lang", value: "ko", url: baseURL! }]);
+  for (const [source, range, dots, paths, period] of [
+    ["ohaasa", "1m", 5, 1, "1개월"], ["gogo", "1m", 7, 0, "1개월"],
+    ["gogo", "1w", 1, 0, "1주"], ["gogo", "all", 7, 0, "전체"],
+  ] as const) {
+    await page.goto(`/board?sign=libra&source=${source}&range=${range}`);
+    await expect(page.getByRole("heading", { name: /순위 레이스/ })).toContainText(period);
+    await expect(page.getByRole("heading", { name: /스탬프 캘린더/ })).toContainText("3개월");
+    const series = page.locator("svg > [data-series='leo']");
+    await expect(series).toHaveCSS("opacity", "1");
+    await expect(series.locator("circle")).toHaveCount(dots);
+    await expect(series.locator("path")).toHaveCount(paths);
+    for (const circle of await series.locator("circle").all()) {
+      expect(Number(await circle.getAttribute("r"))).toBeGreaterThanOrEqual(3);
+      await expect(circle).toHaveCSS("opacity", "0.8");
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
+  }
+  expect(errors).toEqual([]);
+});
 
 test("first visit opens the Japanese main page", async ({ page }) => {
   const errors = watchErrors(page);

@@ -7,7 +7,7 @@ import { SectionHeading, staleLabel, todaySeries } from "@/features/market/compo
 import { RankRace } from "@/features/market/components/rank-race";
 import { StampCalendar } from "@/features/market/components/stamp-calendar";
 import { TopBar } from "@/features/market/components/top-bar";
-import { flavor, messages, type Language } from "@/features/market/i18n";
+import { flavor, messages, rangeLabel, type Language } from "@/features/market/i18n";
 import { marketQuery, type MarketState } from "@/features/market/market-params";
 import styles from "@/features/market/market.module.css";
 import { sliceSeries } from "@/features/market/metrics";
@@ -39,11 +39,11 @@ export function BoardView({ data, initial, lang }: { data: MarketData; initial: 
         </header>
         <AwardCards lang={lang} series={sourceData.series} currentDate={data.currentDate} today={today} onSelect={select} />
         <section className={`${styles.card} ${styles.race}`}>
-          <SectionHeading lang={lang} k="race" note={t.raceHint} />
+          <SectionHeading lang={lang} k="race" note={`${rangeLabel(lang, state.range)} · ${t.raceHint}`} />
           <RankRace lang={lang} range={sliceSeries(sourceData.series, state.range, data.currentDate)} today={today} sign={state.sign} onSelect={select} />
         </section>
         <section className={styles.card}>
-          <SectionHeading lang={lang} k="stampcal" note={t.calHint} />
+          <SectionHeading lang={lang} k="stampcal" note={`${rangeLabel(lang, "3m")} · ${t.calHint}`} />
           <StampCalendar lang={lang} quarter={sliceSeries(sourceData.series, "3m", data.currentDate)} today={today} sign={state.sign} onSelect={select} />
         </section>
       </main>

@@ -2,6 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { BoardView } from "@/features/market/components/board-view";
+import { messages, rangeLabel, type Language } from "@/features/market/i18n";
 import type { MarketState } from "@/features/market/market-params";
 import { expectedMornings } from "@/features/market/series";
 import { emptyMarketFixture, marketFixture } from "@/test/fixtures/market-fixture";
@@ -55,6 +56,18 @@ describe("BoardView", () => {
     cleanup();
     render(<BoardView data={marketFixture} initial={initial} lang="ko" />);
     expect(screen.getByRole("region", { name: "스탬프 캘린더" })).toHaveAttribute("tabindex", "0");
+  });
+
+  it.each<Language>(["ja", "en", "ko"])("labels the changing race period and fixed calendar period in %s", async (lang) => {
+    const user = userEvent.setup(), t = messages[lang];
+    render(<BoardView data={marketFixture} initial={initial} lang={lang} />);
+    const raceHeading = () => screen.getByRole("heading", { name: (name) => name.startsWith(t.race) });
+    const calendarHeading = () => screen.getByRole("heading", { name: (name) => name.startsWith(t.stampcal) });
+    expect(raceHeading()).toHaveTextContent(rangeLabel(lang, "1m"));
+    expect(calendarHeading()).toHaveTextContent(rangeLabel(lang, "3m"));
+    await user.click(within(screen.getByRole("group", { name: t.range })).getByRole("button", { name: rangeLabel(lang, "1w") }));
+    expect(raceHeading()).toHaveTextContent(rangeLabel(lang, "1w"));
+    expect(calendarHeading()).toHaveTextContent(rangeLabel(lang, "3m"));
   });
 
   it("links back to the main page with the current state", () => {

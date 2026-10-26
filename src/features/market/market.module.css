@@ -389,7 +389,8 @@
 }
 
 .stamp[data-empty] { border: 1.5px dashed #e4d3c6; }
-.stamp[data-selected] { box-shadow: 0 0 0 2px var(--ink); }
+.stamp[data-selected]:not([data-empty]) { box-shadow: 0 0 0 2px var(--ink); }
+.stamp[data-selected][data-empty] { border-color: var(--soft); }
 .day { font-size: 10px; color: var(--soft); white-space: nowrap; height: 14px; overflow: visible; }
 
 .scale { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--soft); margin-top: 10px; flex-wrap: wrap; }

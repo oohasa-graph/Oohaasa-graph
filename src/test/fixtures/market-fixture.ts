@@ -40,6 +40,24 @@ export const marketFixture: MarketData = {
   currentDate, generatedAt: "2026-10-26T03:00:00.000Z",
   sources: { ohaasa: fixtureSource("ohaasa"), gogo: fixtureSource("gogo") },
 };
+// Invented ranks with production-shaped gaps: mostly isolated mornings and one short Ohaasa run.
+const sparseDates: Record<Source, string[]> = {
+  ohaasa: ["2026-09-30", "2026-10-02", "2026-10-07", "2026-10-09", "2026-10-13", "2026-10-16", "2026-10-26"],
+  gogo: ["2026-10-02", "2026-10-04", "2026-10-07", "2026-10-11", "2026-10-13", "2026-10-16", "2026-10-26"],
+};
+export const sparseMarketFixture: MarketData = {
+  ...marketFixture,
+  sources: Object.fromEntries(SOURCES.map((source) => {
+    const data = marketFixture.sources[source], keep = new Set(sparseDates[source]);
+    return [source, { ...data, series: {
+      dates: data.series.dates,
+      ranks: Object.fromEntries(ZODIAC_CODES.map((code) => [code,
+        data.series.ranks[code].map((rank, i) => keep.has(data.series.dates[i]) ? rank : null),
+      ])) as MarketData["sources"][Source]["series"]["ranks"],
+    } }];
+  })) as MarketData["sources"],
+};
+
 export const emptyMarketFixture: MarketData = {
   ...marketFixture,
   sources: Object.fromEntries(SOURCES.map((source) => [source, {

@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { ZODIAC_CODES, type ZodiacCode } from "@/features/fortune/domain";
 import {
-  dateLabel, densityStroke, lastValueIndex, linePaths, pickTicks, scaleRank, valueRuns, xForIndex,
+  dateLabel, densityStroke, lastValueIndex, pickTicks, runPaths, scaleRank, valueRuns, xForIndex,
 } from "@/features/market/chart-geometry";
 import { Mochi } from "@/features/market/components/mochi";
 import { RANK_TICKS } from "@/features/market/components/rank-chart";
@@ -21,7 +21,7 @@ export function RankRace({ lang, range, today, sign, onSelect }: {
   const width = useElementWidth(ref, 1000), narrow = width < 720, height = narrow ? 340 : 380;
   const padL = 36, padR = 54, padT = 18, padB = 24, n = range.dates.length, plotW = width - padL - padR;
   const x = (i: number) => xForIndex(i, n, padL, plotW), y = (v: number) => scaleRank(v, padT, height - padT - padB);
-  // Dense ranges get thinner lines; a lone morning keeps the full width so it stays visible as a dot.
+  // Thin dense lines, but keep isolated mornings visible as explicit markers at every density.
   const thick = densityStroke(plotW, n, 5, 2), thin = densityStroke(plotW, n, 2.4, 1);
   const order = [...ZODIAC_CODES.filter((code) => code !== sign), sign];
   return (
@@ -38,17 +38,20 @@ export function RankRace({ lang, range, today, sign, onSelect }: {
             <text key={i} x={x(i)} y={height - 4} textAnchor="middle" fill={LABEL}>{dateLabel(range.dates[i], range.dates)}</text>
           ))}
           {order.map((code) => {
-            const selected = code === sign, values = range.ranks[code];
+            const selected = code === sign, values = range.ranks[code], runs = valueRuns(values);
+            const dots = selected && n <= 31 ? runs.flat() : runs.filter((run) => run.length === 1).flat();
             return (
-              <g key={code} data-series={code} opacity={selected ? 1 : 0.35}>
-                {linePaths(values, x, y).map((d) => (
+              <g key={code} data-series={code}>
+                {runPaths(runs.filter((run) => run.length > 1), values, x, y).map((d) => (
                   <path
-                    key={d} d={`${d}h0`} fill="none" stroke={lineColor(code)} strokeLinecap="round" strokeLinejoin="round"
-                    strokeWidth={d.includes("L") ? (selected ? thick : thin) : (selected ? 5 : 2.4)}
+                    key={d} d={d} fill="none" stroke={lineColor(code)} strokeLinecap="round" strokeLinejoin="round"
+                    strokeWidth={selected ? thick : thin} opacity={selected ? 1 : 0.35}
                   />
                 ))}
-                {selected && n <= 31 && valueRuns(values).flat().map((i) => (
-                  <circle key={i} cx={x(i)} cy={y(values[i]!)} r="4" fill="#fff" stroke={lineColor(code)} strokeWidth="2.4" />
+                {dots.map((i) => (
+                  <circle key={i} cx={x(i)} cy={y(values[i]!)} r={selected ? 4 : 3}
+                    fill={selected ? "#fff" : lineColor(code)} stroke={selected ? lineColor(code) : "#fff"}
+                    strokeWidth={selected ? 2.4 : 1} opacity={selected ? 1 : 0.8} />
                 ))}
               </g>
             );

@@ -28,8 +28,9 @@ export default defineConfig({
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     env: {
-      DATA_FIXTURE_MODE: "1",
+      DATA_FIXTURE_MODE: process.env.DATA_FIXTURE_MODE || "1",
       PRIVATE_USERNAME: "owner",
+      // nosemgrep: generic.secrets.security.detected-bcrypt-hash.detected-bcrypt-hash -- Public test-only credential, not a production secret.
       PRIVATE_PASSWORD_HASH: "$2b$04$pEQRgB0EyvbiupFbd0AAPeL2wPrDEWOKay1x3m5nIVIhqiKncMHlm",
       NEXTAUTH_SECRET: "test-secret-with-at-least-thirty-two-characters",
       NEXTAUTH_URL: "http://127.0.0.1:3000",

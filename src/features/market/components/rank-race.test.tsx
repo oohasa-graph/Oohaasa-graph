@@ -63,11 +63,33 @@ describe("RankRace", () => {
     expect(lineWidths(narrow, "libra")).toHaveLength(2);
   });
 
-  it("keeps a lone morning at full width so dense ranges never hide it", () => {
+  it.each(["2026-10-20", "2026-06-28"])("makes unselected isolated mornings visible without bridging gaps (start %s)", (start) => {
+    const range = buildSeries("gogo", start, "2026-10-26", [
+      { date: "2026-10-20", zodiacCode: "leo", rank: 3 },
+      { date: "2026-10-22", zodiacCode: "leo", rank: 4 },
+      { date: "2026-10-23", zodiacCode: "leo", rank: 5 },
+      { date: "2026-10-26", zodiacCode: "leo", rank: 2 },
+    ]);
+    const container = race(range);
+    const series = container.querySelector("[data-series='leo']")!;
+    const dots = [...series.querySelectorAll("circle")];
+    expect(dots).toHaveLength(2);
+    for (const dot of dots) expect(Number(dot.getAttribute("r"))).toBeGreaterThanOrEqual(3);
+    expect(lineWidths(container, "leo")).toHaveLength(1);
+    expect(series.querySelector("path")!.getAttribute("d")!.match(/L/g)).toHaveLength(1);
+    const plot = 1000 - 36 - 54;
+    expect(dots.map((dot) => Number(dot.getAttribute("cx")))).toEqual([
+      xForIndex(range.dates.indexOf("2026-10-20"), range.dates.length, 36, plot),
+      xForIndex(range.dates.indexOf("2026-10-26"), range.dates.length, 36, plot),
+    ]);
+  });
+
+  it("keeps a selected lone morning visible as a full-size marker on dense ranges", () => {
     stubWidth(360);
     const range = buildSeries("gogo", "2026-06-28", "2026-10-26", [{ date: "2026-10-01", zodiacCode: "leo", rank: 3 }]);
     const container = race(range, "leo");
-    expect(lineWidths(container, "leo")).toEqual([[false, "5"]]);
+    expect(lineWidths(container, "leo")).toEqual([]);
+    expect(container.querySelector("[data-series='leo'] circle")).toHaveAttribute("r", "4");
     expect(container.querySelector("[data-face='leo']")).not.toBeNull();
   });
 
