@@ -1,0 +1,88 @@
+name: Export private edition mirror
+
+on:
+  schedule:
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+    inputs:
+      from:
+        type: string
+        required: false
+      to:
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-data-export
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check out private data repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: oohasa-graph/Oohaasa-graph-data
+          ssh-key: ${{ secrets.DATA_REPO_DEPLOY_KEY }}
+          path: data-repo
+      - name: Export bounded windows without printing bodies
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+          FROM_INPUT: ${{ inputs.from }}
+          TO_INPUT: ${{ inputs.to }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$INGEST_URL" && test -n "$INGEST_SECRET"
+          TO="${TO_INPUT:-$(TZ=Asia/Tokyo date +%F)}"
+          [[ "$TO" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+          [[ "$(date -u -d "$TO" +%F)" == "$TO" ]]
+          FROM="${FROM_INPUT:-$(date -u -d "$TO -13 days" +%F)}"
+          [[ "$FROM" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+          [[ "$(date -u -d "$FROM" +%F)" == "$FROM" ]]
+          [[ "$FROM" < "$TO" || "$FROM" == "$TO" ]]
+          echo "FROM=$FROM" >> "$GITHUB_ENV"
+          echo "TO=$TO" >> "$GITHUB_ENV"
+          A="$FROM"
+          while [[ "$A" < "$TO" || "$A" == "$TO" ]]; do
+            B=$(date -u -d "$A +365 days" +%F)
+            if [[ "$B" > "$TO" ]]; then B="$TO"; fi
+            curl --fail --silent --show-error \
+              --connect-timeout 10 --max-time 120 \
+              -H "Authorization: Bearer $INGEST_SECRET" \
+              -o "$RUNNER_TEMP/export.json" \
+              "${INGEST_URL%/ingest}/export?from=$A&to=$B"
+            npx tsx scripts/write-export-files.ts \
+              "$RUNNER_TEMP/export.json" data-repo
+            rm -f "$RUNNER_TEMP/export.json"
+            A=$(date -u -d "$B +1 day" +%F)
+          done
+      - name: Commit and push only changed edition files
+        working-directory: data-repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name oohaasa-graph-bot
+          git config user.email noreply@users.noreply.github.com
+          mkdir -p editions
+          git add -A -- editions
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "data: export $FROM..$TO"
+            git push
+          fi

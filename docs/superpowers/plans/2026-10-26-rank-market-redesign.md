@@ -40,6 +40,16 @@
 
 ---
 
+## Execution checkpoint (2026-10-26)
+
+- Native implementation in Orca worktree branch `insung3511/eagleray`, based on `f576dd8`. The approved branch is checked out in the parent worktree, so it was not switched or modified. No phase push yet.
+- Tasks 1–4 are complete, each committed after RED/GREEN tests: `0cfe1cb`, `ab03219`, `584a3a9`, `c7dd621`.
+- Task 5 code, workflow, tests and operations documentation are implemented. The private repository exists and its visibility is verified `PRIVATE`.
+- **Task 5 is blocked:** GitHub returned HTTP 422, `Deploy keys are disabled for this repository`. No deploy key or `DATA_REPO_DEPLOY_KEY` secret was installed. The temporary key pair was deleted. Owner approval is required before changing repository or organization security policy.
+- Latest local checks: lint, typecheck and all **119 tests / 22 files pass**. Build exits successfully and skips local migrations, but Turbopack reports a cache persistence warning (`No space left on device`); the host has about 134 MiB free. No unrelated files were deleted.
+- Tasks 6–14 have not started. No reviewer has been dispatched, no production migration has run, and no live backfill/export has been dispatched.
+- Resume at Task 5 Step 5: resolve the deploy-key policy with approval, generate a new temporary key, install the key and Actions secret, verify both, then complete Phase A and push `HEAD:feature/fortune-graph-app` without force. Continue Tasks 6–13 natively, dispatch one fresh reviewer, then perform Task 14.
+
 ## File Map
 
 **Data layer**
