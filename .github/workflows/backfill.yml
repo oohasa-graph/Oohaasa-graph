@@ -1,0 +1,44 @@
+name: Backfill Wayback rankings
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        type: choice
+        options: [all, ohaasa, gogo]
+        default: all
+      from:
+        type: string
+        default: "2021-06-01"
+      to:
+        type: string
+        default: "2026-10-25"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wayback-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Import snapshots (statuses only)
+        env:
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+          INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+          SOURCE: ${{ inputs.source }}
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+        run: >-
+          npx tsx scripts/backfill-wayback.ts
+          --source "$SOURCE" --from "$FROM" --to "$TO"
