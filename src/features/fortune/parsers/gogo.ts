@@ -203,9 +203,7 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
         };
       } else if (luckyBoxes.length === 4) {
         luckyColor = null; // The current page omits the color; never invent one.
-        luckyKey = details.find(".key-txt").length === 1
-          ? luckyValue(".key-txt", "幸運のカギ", "Gogo lucky key is invalid")
-          : null;
+        luckyKey = null; // The current key format differs from the legacy labeled value.
         const scoreFor = (category: keyof FortuneScores): number => {
           const boxes = luckyBoxes.filter((_, box) =>
             $(box).children(`.icon-${category}`).length > 0,

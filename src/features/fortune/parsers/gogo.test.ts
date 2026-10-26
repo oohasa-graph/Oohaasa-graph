@@ -79,6 +79,7 @@ describe("parseGogo", () => {
       );
     });
 
+    $("#ohitsuji").append('<span class="key-txt">Reformatted key</span>');
     const edition = parseGogo($.html(), "2026-08-26");
     const aries = edition.fortunes.find((item) => item.zodiacCode === "aries");
     expect(aries).toMatchObject({
