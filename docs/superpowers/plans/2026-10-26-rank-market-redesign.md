@@ -53,13 +53,13 @@ The organization disables deploy keys globally. The owner explicitly forbids ena
 
 ## Execution checkpoint (2026-10-26)
 
-- Native implementation in Orca worktree branch `insung3511/eagleray`, based on `f576dd8`. The approved branch is checked out in the parent worktree, so it was not switched or modified. No phase push yet.
+- Native implementation in Orca worktree branch `insung3511/eagleray`, based on `f576dd8`. The approved branch is checked out in the parent worktree, so it was not switched or modified. Phase A was pushed without force at `40469c0`; both Vercel deployment and GitHub CI succeeded.
 - Tasks 1–4 are complete, each committed after RED/GREEN tests: `0cfe1cb`, `ab03219`, `584a3a9`, `c7dd621`.
 - Task 5 code, workflow, tests and operations documentation are implemented. The private repository exists and its visibility is verified `PRIVATE`.
 - **Task 5 setup complete:** owner created the app key and both Actions secrets. The agent completed the authorized private-only installation (`175369682`), verified the selected repository in GitHub's installation settings and confirmed Contents write / Metadata read only via API. Organization deploy keys remain disabled. No secret values were read. The workflow additionally checks minted-token repository scope before checkout.
 - Latest checks: lint, typecheck, all **122 tests / 23 files**, and production build pass without the previous disk warning. Active LSP checks are clean. The app workflow has three regression tests covering explicit private-repository token scope, runtime scope verification, trusted triggers and pinned actions. The host now has about 11 GiB free; no unrelated files were deleted by the agent.
-- Tasks 6–14 have not started. No reviewer has been dispatched, no production migration has run, and no live backfill/export has been dispatched.
-- Next: complete Phase A verification and push `HEAD:feature/fortune-graph-app` without force. Do not change deploy-key policies. Continue Tasks 6–13 natively, dispatch one fresh whole-branch reviewer, then perform Task 14. The earlier Claude consultation verified only the authentication proposal; it does not replace the whole-branch review.
+- Task 6 is complete: expected-morning axes, rank-only archive queries, latest full entries, production-protected invented fixtures. RED/GREEN tests include holidays, gaps, empty sources, future exclusion and earliest archive expansion. Tasks 7–14 have not started. The Phase A production build succeeded; live backfill/export and whole-branch review remain pending.
+- Next: Task 7 metrics, then push Phase B as `HEAD:feature/fortune-graph-app` without force. Do not change deploy-key policies. Continue Tasks 6–13 natively, dispatch one fresh whole-branch reviewer, then perform Task 14. The earlier Claude consultation verified only the authentication proposal; it does not replace the whole-branch review.
 
 ## File Map
 
