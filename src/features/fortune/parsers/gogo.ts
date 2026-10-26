@@ -156,11 +156,6 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
         return invalid("Gogo sign structure is invalid");
       }
 
-      const names = details.find(".star-name");
-      if (names.length !== 1 || names.text().trim().length === 0) {
-        return invalid("Gogo sign name is invalid");
-      }
-
       const comments = details.find(".read");
       const comment = comments.text().trim();
       if (comments.length !== 1 || comment.length === 0) {

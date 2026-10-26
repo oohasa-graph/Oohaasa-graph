@@ -56,6 +56,11 @@ describe("parseGogo", () => {
     expect(() => parseGogo(conflicting, "2026-08-26")).toThrow("Gogo source date structure is invalid");
   });
 
+  it("does not require unused sign-name markup when IDs and rankings are valid", () => {
+    const withoutNames = html.replaceAll(/<[^>]+class="star-name"[^>]*>[^<]*<\/[^>]+>/g, "");
+    expect(parseGogo(withoutNames, "2026-08-26").fortunes).toHaveLength(12);
+  });
+
   it("leaves an omitted score category neutral", () => {
     const signStart = html.indexOf('<article id="tenbin">');
     const luckyStart = html.indexOf('<div class="lucky-box">', signStart);
