@@ -18,6 +18,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MAX_SOURCE_DATE_DISTANCE_MS = 183 * 24 * 60 * 60 * 1_000;
 const WINNER_BY_CLASS: Readonly<Record<string, WinnerCategory>> = Object.freeze({
   overall: "overall",
+  total: "overall",
   money: "money",
   love: "love",
   work: "work",
@@ -173,9 +174,12 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
           return invalid(errorMessage);
         }
 
-        const container = labels.parent().clone();
-        container.find(selector).remove();
-        const valueMatch = container.text().trim().match(/^[：:]\s*([\s\S]+)$/);
+        // The value is the bare text right after the label, up to the next element.
+        let text = "";
+        for (let node = labels.get(0)?.nextSibling; node?.type === "text"; node = node.nextSibling) {
+          text += $(node).text();
+        }
+        const valueMatch = text.trim().match(/^[：:]\s*([\s\S]+)$/);
         if (!valueMatch || valueMatch[1].trim().length === 0) {
           return invalid(errorMessage);
         }
@@ -202,8 +206,8 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
           work: scoreFor("work"), health: scoreFor("health"),
         };
       } else if (luckyBoxes.length === 4) {
-        luckyColor = null; // The current page omits the color; never invent one.
-        luckyKey = null; // The current key format differs from the legacy labeled value.
+        luckyColor = luckyValue(".lucky-color-txt", "ラッキーカラー", "Gogo lucky color is invalid");
+        luckyKey = luckyValue(".key-txt", "幸運のカギ", "Gogo lucky key is invalid");
         const scoreFor = (category: keyof FortuneScores): number => {
           const boxes = luckyBoxes.filter((_, box) =>
             $(box).children(`.icon-${category}`).length > 0,
@@ -226,23 +230,25 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
 
       const winnerCategories: WinnerCategory[] = [];
       details.find(".number-one-area").each((_, marker) => {
-        const classNames = ($(marker).attr("class") ?? "")
-          .split(/\s+/)
-          .filter(Boolean);
+        const classNames = (node: Parameters<typeof $>[0]) =>
+          ($(node).attr("class") ?? "").split(/\s+/).filter(Boolean);
+        // Legacy markers carry the category class; current ones list li.number-one-<category>.
+        const tokens = [
+          ...classNames(marker).filter((className) => className !== "number-one-area"),
+          ...$(marker)
+            .find("li")
+            .toArray()
+            .flatMap(classNames)
+            .filter((className) => className.startsWith("number-one-"))
+            .map((className) => className.slice("number-one-".length)),
+        ];
         if (
-          classNames.some(
-            (className) =>
-              className !== "number-one-area" && WINNER_BY_CLASS[className] === undefined,
-          )
+          tokens.length === 0 ||
+          tokens.some((token) => !Object.hasOwn(WINNER_BY_CLASS, token))
         ) {
           return invalid("Gogo winner marker is invalid");
         }
-        const categories = classNames
-          .map((className) => WINNER_BY_CLASS[className])
-          .filter((category): category is WinnerCategory => category !== undefined);
-        if (categories.length === 0) {
-          return invalid("Gogo winner marker is invalid");
-        }
+        const categories = tokens.map((token) => WINNER_BY_CLASS[token]);
         for (const category of categories) {
           if (!winnerCategories.includes(category)) {
             winnerCategories.push(category);

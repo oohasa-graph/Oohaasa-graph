@@ -7,6 +7,7 @@ import { InvalidEditionError, StaleSourceError } from "@/features/fortune/errors
 import { parseGogo } from "@/features/fortune/parsers/gogo";
 
 const html = readFileSync("src/test/fixtures/gogo-valid.html", "utf8");
+const currentHtml = readFileSync("src/test/fixtures/gogo-current.html", "utf8");
 
 describe("parseGogo", () => {
   it("parses date, ranks, fortune details, scoped scores, and winner categories", () => {
@@ -68,24 +69,50 @@ describe("parseGogo", () => {
     expect(parseGogo($.html(), "2026-08-26").fortunes).toHaveLength(12);
   });
 
-  it("parses category-icon boxes without inventing an omitted lucky color", () => {
-    const $ = load(html);
-    $(".lucky-box").each((_, box) => {
-      $(box).replaceWith(
-        '<div class="score-area">' +
-        (["money", "love", "work", "health"] as const).map((category, index) =>
-          `<div class="lucky-box">${`<span class="icon-${category}"></span>`.repeat(index + 1)}</div>`,
-        ).join("") + '</div>',
-      );
-    });
+  it("parses the current category-cell layout with label-adjacent lucky values", () => {
+    const edition = parseGogo(currentHtml, "2026-10-26");
 
-    $("#ohitsuji").append('<span class="key-txt">Reformatted key</span>');
-    const edition = parseGogo($.html(), "2026-08-26");
-    const aries = edition.fortunes.find((item) => item.zodiacCode === "aries");
-    expect(aries).toMatchObject({
-      luckyColor: null, luckyKey: null,
+    expect(edition.sourceDateLabel).toBe("10月26日（Mon）");
+    expect(edition.fortunes).toHaveLength(12);
+    expect(edition.fortunes.find((item) => item.zodiacCode === "libra")).toEqual({
+      zodiacCode: "libra",
+      rank: 1,
+      comment: "架空の運勢文1。",
+      adviceLines: ["架空の運勢文1。"],
+      luckyHint: null,
+      luckyColor: "青",
+      luckyKey: "小さな手帳",
       scores: { money: 1, love: 2, work: 3, health: 4 },
+      winnerCategories: ["overall", "money"],
     });
+    expect(
+      edition.fortunes
+        .filter((item) => item.winnerCategories.length > 0)
+        .map((item) => [item.zodiacCode, item.winnerCategories]),
+    ).toEqual([
+      ["taurus", ["love"]],
+      ["gemini", ["work"]],
+      ["virgo", ["health"]],
+      ["libra", ["overall", "money"]],
+    ]);
+  });
+
+  it("rejects unknown winner items in the current layout", () => {
+    const malformed = currentHtml.replace('class="number-one-love"', 'class="number-one-mystery"');
+    const parse = () => parseGogo(malformed, "2026-10-26");
+
+    expect(parse).toThrow("Gogo winner marker is invalid");
+    expect(parse).not.toThrow(/mystery/);
+  });
+
+  it("rejects a relabeled lucky key in the current layout without exposing prose", () => {
+    const malformed = currentHtml
+      .replace("架空の運勢文1。", "Invented hidden detail")
+      .replace('<span class="key-txt">幸運のカギ</span>：小さな手帳', '<span class="key-txt">別の鍵</span>：小さな手帳');
+    const parse = () => parseGogo(malformed, "2026-10-26");
+
+    expect(parse).toThrow("Gogo lucky key is invalid");
+    expect(parse).not.toThrow("Invented hidden detail");
   });
 
   it("leaves an omitted score category neutral", () => {
