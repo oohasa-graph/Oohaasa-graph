@@ -217,7 +217,8 @@ export async function ingestSource(
             const dates = $(".ttl-area").toArray().map((node) =>
               $(node).text().match(/\d{1,2}月\d{1,2}日（(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)）/)?.[0] ?? "none",
             );
-            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; hasDateLabel=${/\d{1,2}月\d{1,2}日/.test(diagnosticHtml)}`;
+            const details = $("#ohitsuji");
+            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; luckyBoxes=${details.find(".lucky-box").length}; directLuckyBoxes=${details.children(".lucky-box").length}; colors=${details.find(".color-txt").length}; keys=${details.find(".key-txt").length}; reads=${details.find(".read").length}`;
           })()) }
           : {}),
       },

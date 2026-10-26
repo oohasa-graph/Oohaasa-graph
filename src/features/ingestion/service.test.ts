@@ -252,7 +252,7 @@ describe("ingestSource", () => {
     const result = await ingestSource({ ...test.input, attempt: "manual" });
 
     expect(result.status).toBe("invalid");
-    expect(result.diagnostic).toContain("titleAreas=0; titleDates=; rankingLinks=0; hasDateLabel=false");
+    expect(result.diagnostic).toContain("titleAreas=0; titleDates=; rankingLinks=0; luckyBoxes=0");
     expect(JSON.stringify(result)).not.toContain(sourceProse);
   });
 

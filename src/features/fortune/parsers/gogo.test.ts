@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 
+import { load } from "cheerio";
 import { describe, expect, it } from "vitest";
 
 import { InvalidEditionError, StaleSourceError } from "@/features/fortune/errors";
@@ -59,6 +60,12 @@ describe("parseGogo", () => {
   it("does not require unused sign-name markup when IDs and rankings are valid", () => {
     const withoutNames = html.replaceAll(/<[^>]+class="star-name"[^>]*>[^<]*<\/[^>]+>/g, "");
     expect(parseGogo(withoutNames, "2026-08-26").fortunes).toHaveLength(12);
+  });
+
+  it("accepts a lucky box nested inside the sign detail", () => {
+    const $ = load(html);
+    $("#ohitsuji > .lucky-box").wrap('<div class="extra"></div>');
+    expect(parseGogo($.html(), "2026-08-26").fortunes).toHaveLength(12);
   });
 
   it("leaves an omitted score category neutral", () => {

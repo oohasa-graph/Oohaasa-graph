@@ -162,7 +162,7 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
         return invalid("Gogo comment is invalid");
       }
 
-      const luckyBoxes = details.children(".lucky-box");
+      const luckyBoxes = details.find(".lucky-box");
       if (luckyBoxes.length !== 1) {
         return invalid("Gogo lucky structure is invalid");
       }
