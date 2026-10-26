@@ -65,7 +65,7 @@ A successful response contains one terminal result per selected source and does 
 
 ## Final-attempt notification behavior
 
-The protected API returns HTTP 424 on the `final` attempt if any selected expected source remains:
+The protected API returns HTTP 424 on `final` and `manual` attempts if any selected expected source remains:
 
 - `stale`
 - `invalid`

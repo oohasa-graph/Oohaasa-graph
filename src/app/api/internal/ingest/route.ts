@@ -94,13 +94,13 @@ export function createPostHandler(dependencies: HandlerDependencies) {
       ),
     );
 
-    const finalUnresolved =
-      body.attempt === "final" &&
+    const unresolved =
+      (body.attempt === "final" || body.attempt === "manual") &&
       results.some((result) => unresolvedFinalStatuses.has(result.status));
 
     return NextResponse.json(
       { targetDate, results },
-      { status: finalUnresolved ? 424 : 200 },
+      { status: unresolved ? 424 : 200 },
     );
   };
 }

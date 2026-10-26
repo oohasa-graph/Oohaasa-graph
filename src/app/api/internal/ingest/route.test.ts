@@ -118,6 +118,15 @@ describe("POST /api/internal/ingest", () => {
     expect(response.status).toBe(424);
   });
 
+  it("also fails a manual recovery when the selected source remains unresolved", async () => {
+    const ingest = vi.fn().mockResolvedValue(result("gogo", "fetch_error"));
+    const handler = createPostHandler({ ingest, now: fixedNow, secret: "correct-secret" });
+
+    const response = await handler(makeRequest({ attempt: "manual", source: "gogo", force: false }));
+
+    expect(response.status).toBe(424);
+  });
+
   it("does not fail the final attempt for terminal statuses", async () => {
     const ingest = vi.fn(async ({ source }: { source: Source }) =>
       source === "ohaasa" ? result(source, "not_expected") : result(source, "success"),
