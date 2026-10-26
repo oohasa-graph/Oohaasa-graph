@@ -47,6 +47,19 @@ jobs:
           owner: oohasa-graph
           repositories: Oohaasa-graph-data
           permission-contents: write
+      - name: Verify private-only token scope
+        env:
+          GH_TOKEN: ${{ steps.data-token.outputs.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api installation/repositories | jq -e '
+            .total_count == 1 and (.repositories | length) == 1 and
+            .repositories[0].private == true and
+            (.repositories[0].full_name | ascii_downcase) ==
+              "oohasa-graph/oohaasa-graph-data"
+          ' > /dev/null
+          echo "private repository scope verified"
       - name: Check out private data repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

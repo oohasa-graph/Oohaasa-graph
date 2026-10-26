@@ -16,6 +16,16 @@ describe("private mirror authentication boundary", () => {
     expect(workflow).not.toContain("skip-token-revoke: true");
   });
 
+  it("verifies the minted token exposes exactly one private repository before checkout", () => {
+    const verify = workflow.indexOf("name: Verify private-only token scope");
+    expect(verify).toBeGreaterThan(-1);
+    expect(verify).toBeLessThan(workflow.indexOf("name: Check out private data repository"));
+    expect(workflow).toContain("gh api installation/repositories");
+    expect(workflow).toContain(".total_count == 1");
+    expect(workflow).toContain(".repositories[0].private == true");
+    expect(workflow).toContain("oohasa-graph/oohaasa-graph-data");
+  });
+
   it("allows credentials only on trusted scheduled or manual runs in the source repository", () => {
     expect(workflow).toContain("github.repository == 'oohasa-graph/Oohaasa-graph'");
     expect(workflow).toContain("github.event_name == 'schedule'");

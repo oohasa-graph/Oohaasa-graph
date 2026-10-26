@@ -134,7 +134,7 @@ Owner-approved change (2026-10-26): use a GitHub App instead of a deploy key. Th
 3. Grant Repository permissions: Contents **Read and write** and the automatic Metadata **Read-only** permission. Leave all other repository, organization and account permissions at **No access**.
 4. For installation availability, select **Only on this account**. Create the app.
 5. Install it on `oohasa-graph` using **Only select repositories**, choosing **Oohaasa-graph-data only**. Never choose All repositories or the public source repository.
-6. In the app's General settings, copy its **Client ID** and generate a private key. Keep the downloaded PEM file private; do not send it in chat or commit it.
+6. Copy the app's **Client ID**. Under **Credentials → Key pairs → New key**, generate a private key (older GitHub layouts show **General → Private keys → Generate a private key**). Keep the downloaded PEM file private; do not send it in chat or commit it.
 7. Under `oohasa-graph/Oohaasa-graph` → Settings → Secrets and variables → Actions, add repository secrets `DATA_APP_CLIENT_ID` (the Client ID) and `DATA_APP_PRIVATE_KEY` (the complete PEM file).
 
 The public repository's workflow requests a token for the explicit owner and private repository, with Contents write only. Tokens expire after one hour and are revoked when the job finishes. Every action is pinned to a full commit SHA.
@@ -145,9 +145,9 @@ No app needs to run a server, subscribe to webhooks, or run Actions in the priva
 
 Before rollout, verify the installation selects only `Oohaasa-graph-data`, grants only Contents write and Metadata read, and has no installation on the public repository. Verify the existing deploy-key policy is still disabled.
 
-To rotate the app key, generate a replacement in the app's General settings and update `DATA_APP_PRIVATE_KEY`. Verify a successful export before revoking the retired key. Never print key contents or tokens.
+To rotate the app key, generate a replacement under **Credentials → Key pairs** and update `DATA_APP_PRIVATE_KEY`. Verify a successful export before revoking the retired key. Never print key contents or tokens.
 
-Setup checkpoint: the private repository exists. App creation, installation and Actions secrets are pending owner setup. No deploy key was installed and no organization policy was changed.
+Setup verified (2026-10-26): `oohaasa-graph-private-data-export`, installation `175369682`, selects only the private `Oohaasa-graph-data` repository, with Contents write and Metadata read only. Both Actions secret names are present; secret values were not read. The organization deploy-key policy remains disabled. The workflow verifies that every minted token lists exactly one private repository before checkout.
 
 ## Wayback backfill
 
