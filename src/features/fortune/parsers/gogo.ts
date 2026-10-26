@@ -92,12 +92,17 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
     return invalid("Gogo HTML is invalid");
   }
 
-  const titleAreas = $(".ttl-area");
-  if (titleAreas.length !== 1) {
+  const titleDates = new Set(
+    $(".ttl-area")
+      .toArray()
+      .map((area) => $(area).text().match(DATE_RE)?.[0])
+      .filter((date): date is string => date !== undefined),
+  );
+  if (titleDates.size !== 1) {
     return invalid("Gogo source date structure is invalid");
   }
   const { editionDate, sourceDateLabel } = sourceDateFromTitle(
-    titleAreas.text(),
+    [...titleDates][0],
     expectedDate,
   );
   if (editionDate !== expectedDate) {

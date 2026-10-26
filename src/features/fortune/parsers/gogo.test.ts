@@ -48,6 +48,14 @@ describe("parseGogo", () => {
     });
   });
 
+  it("ignores additional title areas without a date, but rejects conflicting dates", () => {
+    const extraHeading = html.replace('</body>', '<div class="ttl-area">Other section</div></body>');
+    expect(parseGogo(extraHeading, "2026-08-26").fortunes).toHaveLength(12);
+
+    const conflicting = html.replace('</body>', '<div class="ttl-area">8月27日（Thu）</div></body>');
+    expect(() => parseGogo(conflicting, "2026-08-26")).toThrow("Gogo source date structure is invalid");
+  });
+
   it("leaves an omitted score category neutral", () => {
     const signStart = html.indexOf('<article id="tenbin">');
     const luckyStart = html.indexOf('<div class="lucky-box">', signStart);

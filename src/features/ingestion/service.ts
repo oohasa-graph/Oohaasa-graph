@@ -214,7 +214,10 @@ export async function ingestSource(
         ...(attempt === "manual" && error instanceof InvalidEditionError
           ? { diagnostic: error.message + (diagnosticHtml === null ? "" : (() => {
             const $ = load(diagnosticHtml);
-            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; rankingLinks=${$(".rank-box a[data-label]").length}; hasDateLabel=${/\d{1,2}月\d{1,2}日/.test(diagnosticHtml)}`;
+            const dates = $(".ttl-area").toArray().map((node) =>
+              $(node).text().match(/\d{1,2}月\d{1,2}日（(?:Sun|Mon|Tue|Wed|Thu|Fri|Sat)）/)?.[0] ?? "none",
+            );
+            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; hasDateLabel=${/\d{1,2}月\d{1,2}日/.test(diagnosticHtml)}`;
           })()) }
           : {}),
       },
