@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rank Market — language + two views</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #4b3a34; --soft: #9a8479; --line: #f0e2d6; --cream: #fff8ee; --card: #fffdf9;
+    --pink: #ff8fab; --pinkbg: #ffe3ea; --sky: #6aa8e8; --skybg: #e3f0ff; --butter: #ffd34d; --hanko: #e2504c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: var(--ink); background: var(--cream);
+    background-image: radial-gradient(#ffdfe7 1.6px, transparent 1.7px); background-size: 20px 20px;
+    font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "M PLUS Rounded 1c", sans-serif; font-weight: 500; }
+  button { font: inherit; color: inherit; }
+  .num { font-variant-numeric: tabular-nums; }
+  .switcher { position: sticky; top: 0; z-index: 50; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    padding: 10px 16px; background: #fffdf9ee; backdrop-filter: blur(6px); border-bottom: 2px dashed #f3c9d4; }
+  .switcher .title { font-weight: 900; margin-right: 6px; }
+  .tab { background: #fff; border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-weight: 700; }
+  .tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .switcher .note { margin-left: auto; font-size: 12px; color: var(--soft); }
+  .design { display: none; } .design.on { display: block; }
+  .wrap { max-width: 1260px; margin: 0 auto; padding: 18px 16px 0; }
+  .card { background: var(--card); border: 2px solid var(--line); border-radius: 22px; padding: 16px; box-shadow: 0 3px 0 #f3e4d7; min-width: 0; }
+  .card h3 { margin: 0 0 10px; font-size: 16px; font-weight: 900; display: flex; align-items: baseline; gap: 8px; }
+  .card h3 small { font-size: 11px; color: var(--soft); font-weight: 700; letter-spacing: .06em; }
+  .pills { display: inline-flex; background: #fff; border: 2px solid var(--line); border-radius: 999px; padding: 3px; }
+  .pills button { border: 0; background: transparent; padding: 5px 12px; border-radius: 999px; cursor: pointer; font-weight: 700; color: var(--soft); }
+  .pills button.on { background: var(--pink); color: #fff; }
+  .brand { font-weight: 900; font-size: 22px; letter-spacing: .02em; }
+  .brand small { display: block; font-size: 11px; color: var(--soft); letter-spacing: .12em; font-weight: 700; }
+  .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .up { color: #f0607f; } .dn { color: var(--sky); } .flat { color: #b9a89e; }
+  .badge { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font-weight: 900; font-size: 13px;
+    background: #fff; border: 2px solid var(--line); }
+  .badge.g1 { background: #ffe07a; border-color: #f4bf2a; } .badge.g2 { background: #eef1f6; border-color: #c8d0dc; } .badge.g3 { background: #ffd9bd; border-color: #e9a879; }
+  .hanko { display: inline-block; border: 2px solid var(--hanko); color: var(--hanko); border-radius: 8px; padding: 1px 6px; font-size: 11px; font-weight: 900; transform: rotate(-6deg); }
+  .pickbar { display: flex; justify-content: center; padding: 22px 16px 34px; }
+  .pick { border: 0; border-radius: 999px; padding: 12px 24px; font-weight: 900; cursor: pointer; font-size: 15px; background: var(--pink); color: #fff; box-shadow: 0 4px 0 #e06c8a; }
+
+  /* A: cute terminal */
+  .tape { overflow: hidden; white-space: nowrap; background: var(--pinkbg); border-top: 2px dashed #f7b3c4; border-bottom: 2px dashed #f7b3c4; }
+  .tape-inner { display: inline-flex; align-items: center; padding: 6px 0; animation: tape 50s linear infinite; }
+  @keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .tick { display: inline-flex; align-items: center; gap: 5px; margin: 0 16px; font-weight: 700; }
+  .agrid { display: grid; grid-template-columns: minmax(420px, 1fr) 1.6fr; gap: 14px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 11px; color: var(--soft); font-weight: 700; text-align: right; padding: 4px 6px; }
+  td { text-align: right; padding: 4px 6px; border-top: 2px dotted var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  tr.row { cursor: pointer; } tr.row:hover td { background: #fff4f6; }
+  tr.row.sel td { background: #ffe9ef; }
+  .who { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+  .chgpill { display: inline-block; min-width: 46px; text-align: center; border-radius: 999px; padding: 2px 8px; font-weight: 900; font-size: 12px; }
+  .chgpill.up { background: var(--pinkbg); } .chgpill.dn { background: var(--skybg); } .chgpill.flat { background: #f5efe9; }
+  .hero { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .bubble { position: relative; background: #fff; border: 2px solid var(--ink); border-radius: 18px; padding: 8px 14px; font-weight: 700; }
+  .bubble::before { content: ""; position: absolute; left: -10px; top: 50%; margin-top: -7px; border: 7px solid transparent; border-right-color: var(--ink); border-left: 0; }
+  .bubble::after { content: ""; position: absolute; left: -7px; top: 50%; margin-top: -6px; border: 6px solid transparent; border-right-color: #fff; border-left: 0; }
+  .bigrank { font-size: 40px; font-weight: 900; line-height: 1; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+  .stat { background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 10px; }
+  .stat b { display: block; font-size: 20px; font-weight: 900; margin-top: 4px; }
+  .stat em { font-style: normal; font-size: 11px; color: var(--soft); margin-left: 4px; }
+  .abottom { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+  .mover { display: flex; align-items: center; justify-content: space-between; padding: 5px 4px; border-radius: 12px; cursor: pointer; }
+  .mover:hover { background: #fff4f6; }
+  .legend { font-size: 12px; color: var(--soft); margin-top: 4px; }
+
+  /* C: cute board */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  .kpi { position: relative; background: var(--card); border: 2px solid var(--line); border-radius: 20px; padding: 12px 12px 12px 86px; min-height: 92px; cursor: pointer; box-shadow: 0 3px 0 #f3e4d7; }
+  .kpi .face { position: absolute; left: 10px; top: 12px; }
+  .kpi .hanko { position: absolute; right: 10px; top: 10px; }
+  .kpi b { display: block; font-size: 18px; font-weight: 900; margin-top: 16px; }
+  .kpi span { font-size: 13px; color: var(--soft); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chips button { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 2px solid var(--line); border-radius: 999px; padding: 2px 10px 2px 3px; cursor: pointer; font-weight: 700; font-size: 12px; }
+  .chips button.on { border-color: var(--pink); background: #fff0f4; }
+  .stamps { display: grid; gap: 3px; align-items: center; }
+  .stamps .lab { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; padding-right: 6px; border-radius: 999px; }
+  .stamps .lab.sel { background: #ffe9ef; }
+  .stamp { aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-size: 9px; color: #fff; font-weight: 900; }
+  .stamps .day { font-size: 10px; color: var(--soft); white-space: nowrap; height: 14px; }
+  .scale { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--soft); margin-top: 10px; flex-wrap: wrap; }
+  .scale i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: middle; }
+
+  .crumb { font-weight: 700; color: var(--soft); }
+  .design.on { animation: pop .35s ease; }
+  @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: none; } }
+  .chartlink { position: relative; cursor: zoom-in; border-radius: 16px; margin: 4px -8px 0; padding: 0 8px; transition: background .15s, box-shadow .15s; }
+  .chartlink:hover { background: #fff4f6; box-shadow: 0 0 0 2px #ffc2d1; }
+  .chartlink .hint { position: absolute; right: 10px; top: 6px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 4px 11px; }
+  .chartlink:hover .hint { background: var(--pink); }
+  .back { border: 2px solid var(--line); background: #fff; border-radius: 999px; padding: 7px 14px; font-weight: 900; cursor: pointer; }
+  .back:hover { border-color: var(--pink); color: var(--pink); }
+  body.ko { font-family: "Gowun Dodum", "Zen Maru Gothic", "Hiragino Maru Gothic ProN", sans-serif; }
+  body.ko b, body.ko h3, body.ko .brand { letter-spacing: -.01em; }
+  .barctl { display: inline-flex; align-items: center; gap: 10px; }
+  .langpills button { padding: 4px 10px; font-size: 13px; }
+  .langpage { min-height: calc(100vh - 60px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 16px 60px; }
+  .langhero { display: flex; align-items: flex-end; gap: 10px; }
+  .langhero span { animation: bob 2.4s ease-in-out infinite; }
+  .langhero span:nth-child(2) { animation-delay: .3s; } .langhero span:nth-child(3) { animation-delay: .6s; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+  .langpage h1 { font-size: 40px; font-weight: 900; margin: 14px 0 6px; }
+  .langsub { color: var(--soft); font-weight: 700; line-height: 1.7; margin: 0 0 22px; }
+  .langopts { display: grid; grid-template-columns: repeat(3, minmax(0, 200px)); gap: 14px; width: 100%; justify-content: center; }
+  .langopt { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--card); border: 2px solid var(--line); border-radius: 24px; padding: 18px 12px; cursor: pointer; box-shadow: 0 4px 0 #f3e4d7; transition: transform .12s, border-color .12s; }
+  .langopt:hover { transform: translateY(-4px); border-color: var(--pink); }
+  .langopt.on { border-color: var(--pink); background: #fff0f4; }
+  .langopt b { font-size: 20px; font-weight: 900; } .langopt span { color: var(--soft); font-weight: 700; }
+  .langopt:nth-child(3) b, .langopt:nth-child(3) span { font-family: "Gowun Dodum", sans-serif; }
+  .langnote { color: var(--soft); font-size: 12px; margin-top: 22px; }
+  @media (max-width: 900px) {
+    .agrid, .abottom { grid-template-columns: 1fr; }
+    .kpis, .stats { grid-template-columns: repeat(2, 1fr); }
+    .switcher .note { margin-left: 0; width: 100%; }
+    .langopts { grid-template-columns: 1fr; max-width: 280px; }
+  }
+</style>
+</head>
+<body>
+<div class="switcher">
+  <span class="title">☆ Rank Market</span>
+  <span id="barctl" class="barctl"><span class="crumb" id="crumb"></span><span class="pills langpills" id="langpills"></span></span>
+  <span class="note">Prototype · fake data · opens on the rank page in Japanese</span>
+</div>
+<section id="lang" class="design"></section>
+<section id="a" class="design"></section>
+<section id="c" class="design"></section>
+
+<script>
+const SIGNS = [
+  ["aries", "ARI", "♈", "Aries", "おひつじ座"], ["taurus", "TAU", "♉", "Taurus", "おうし座"], ["gemini", "GEM", "♊", "Gemini", "ふたご座"],
+  ["cancer", "CAN", "♋", "Cancer", "かに座"], ["leo", "LEO", "♌", "Leo", "しし座"], ["virgo", "VIR", "♍", "Virgo", "おとめ座"],
+  ["libra", "LIB", "♎", "Libra", "てんびん座"], ["scorpio", "SCO", "♏", "Scorpio", "さそり座"], ["sagittarius", "SAG", "♐", "Sagittarius", "いて座"],
+  ["capricorn", "CAP", "♑", "Capricorn", "やぎ座"], ["aquarius", "AQU", "♒", "Aquarius", "みずがめ座"], ["pisces", "PIS", "♓", "Pisces", "うお座"],
+].map(([code, t, sym, name, ja], i) => ({ code, t, sym: sym + "︎", name, ja,
+  line: `hsl(${i * 30} 70% 64%)`, pastel: `hsl(${i * 30} 92% 87%)` }));
+const INK = "#4b3a34";
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const DAYS = [];
+for (let d = new Date(Date.UTC(2026, 9, 26)); DAYS.length < 60; d = new Date(d.getTime() - 864e5)) {
+  const w = d.getUTCDay();
+  if (w !== 0 && w !== 6) DAYS.unshift(d.toISOString().slice(0, 10));
+}
+const N = DAYS.length;
+function gen(seed) {
+  const r = mulberry32(seed);
+  const latent = SIGNS.map(() => (r() - 0.5) * 4);
+  const ranks = SIGNS.map(() => []);
+  for (let d = 0; d < N; d++) {
+    const score = latent.map((v, i) => { latent[i] = v * 0.85 + (r() - 0.5) * 2.2; return latent[i] + (r() - 0.5) * 2.6; });
+    score.map((s, i) => [s, i]).sort((x, y) => y[0] - x[0]).forEach(([, i], k) => ranks[i].push(k + 1));
+  }
+  return ranks;
+}
+const DATA = { ohaasa: gen(7), gogo: gen(42) };
+const RANGES = [5, 21, 60];
+const state = { design: "a", returnTo: "a", lang: "ja", source: "ohaasa", sign: 6, range: 21 };
+
+const fmtDate = (s) => { const [, m, d] = s.split("-"); return `${+m}/${+d}`; };
+const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+function stats(a) {
+  const m = avg(a);
+  let best = 0, cur = 0;
+  for (const v of a) { cur = v <= 3 ? cur + 1 : 0; best = Math.max(best, cur); }
+  return { best: Math.min(...a), worst: Math.max(...a), avg: m, sd: Math.sqrt(avg(a.map((v) => (v - m) ** 2))),
+    ones: a.filter((v) => v === 1).length, top3: a.filter((v) => v <= 3).length, streak: best, current: cur };
+}
+const range = (a) => a.slice(N - state.range);
+const rangeDays = () => range(DAYS);
+function xTicks(days, count) {
+  return Array.from({ length: count }, (_, k) => { const i = Math.round((k * (days.length - 1)) / (count - 1)); return { i, label: fmtDate(days[i]) }; });
+}
+const cls = (c) => (c > 0 ? "up" : c < 0 ? "dn" : "flat");
+const arrow = (c) => (c > 0 ? "▲" : c < 0 ? "▼" : "−");
+const badge = (rk) => `<span class="badge num ${rk <= 3 ? "g" + rk : ""}">${rk}</span>`;
+
+// Original mochi character; face follows the rank.
+function mochi(i, rk, size = 40) {
+  const s = SIGNS[i];
+  const mood = rk === 1 ? "star" : rk <= 3 ? "happy" : rk <= 9 ? "calm" : "sad";
+  const stroke = `stroke="${INK}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"`;
+  let face = "";
+  if (mood === "star" || mood === "happy") {
+    face += `<path d="M18 31 q4 -5 8 0 M34 31 q4 -5 8 0" fill="none" ${stroke}/>`;
+    face += `<path d="M25 37 q5 7 10 0 z" fill="#e8607d" ${stroke}/>`;
+  } else if (mood === "calm") {
+    face += `<circle cx="22" cy="30" r="2.8" fill="${INK}"/><circle cx="38" cy="30" r="2.8" fill="${INK}"/>`;
+    face += `<circle cx="22.9" cy="29" r="0.9" fill="#fff"/><circle cx="38.9" cy="29" r="0.9" fill="#fff"/>`;
+    face += `<path d="M25 37 q2.5 3 5 0 q2.5 3 5 0" fill="none" ${stroke}/>`;
+  } else {
+    face += `<path d="M17 29 l7 2.5 M43 29 l-7 2.5" fill="none" ${stroke}/>`;
+    face += `<path d="M26 41 q4 -3.5 8 0" fill="none" ${stroke}/>`;
+    face += `<path d="M49 15 q-4 6 0 8 q4 -2 0 -8 z" fill="#9fd0ff" stroke="${INK}" stroke-width="1.6"/>`;
+  }
+  const crown = mood === "star"
+    ? `<path d="M20 11 l3 -9 l7 6 l7 -6 l3 9 z" fill="#ffd34d" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M53 8 l1.5 4 l4 1.5 l-4 1.5 l-1.5 4 l-1.5 -4 l-4 -1.5 l4 -1.5 z" fill="#ffd34d"/>`
+    : "";
+  return `<svg width="${size}" height="${size * 56 / 60}" viewBox="0 0 60 56" style="display:inline-block;vertical-align:middle;overflow:visible">
+    <path d="M7 36 C7 17 19 9 30 9 C41 9 53 17 53 36 C53 47 45 51 30 51 C15 51 7 47 7 36 Z" fill="${s.pastel}" ${stroke}/>
+    <text x="30" y="22" text-anchor="middle" font-size="10" fill="${INK}" opacity=".45">${s.sym}</text>
+    <ellipse cx="16.5" cy="37" rx="4.5" ry="2.8" fill="#ff9fb8" opacity=".75"/><ellipse cx="43.5" cy="37" rx="4.5" ry="2.8" fill="#ff9fb8" opacity=".75"/>
+    ${face}${crown}</svg>`;
+}
+
+function chart(o) {
+  const { w, h, series, yMin, yMax, invert = false, padL = 34, padR = 12, padT = 12, padB = 24,
+    yTicks = [], xLabels = [], grid = "#f0e2d6", label = "#9a8479", fontSize = 11, extra = () => "" } = o;
+  const iw = w - padL - padR, ih = h - padT - padB, n = series[0].values.length;
+  const X = (i) => padL + (n <= 1 ? iw / 2 : (i * iw) / (n - 1));
+  const Y = (v) => { const t = (v - yMin) / (yMax - yMin || 1); return invert ? padT + t * ih : padT + (1 - t) * ih; };
+  let s = `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;overflow:visible" font-size="${fontSize}" font-weight="700">`;
+  for (const t of yTicks) {
+    s += `<line x1="${padL}" x2="${w - padR}" y1="${Y(t.v)}" y2="${Y(t.v)}" stroke="${grid}" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/>`;
+    s += `<text x="${padL - 8}" y="${Y(t.v) + 4}" text-anchor="end" fill="${label}">${t.label}</text>`;
+  }
+  for (const xl of xLabels) s += `<text x="${X(xl.i)}" y="${h - 4}" text-anchor="middle" fill="${label}">${xl.label}</text>`;
+  for (const se of series) {
+    const pts = se.values.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`);
+    if (se.area) s += `<path d="M${pts.join(" L")} L${X(n - 1).toFixed(1)},${padT + ih} L${X(0).toFixed(1)},${padT + ih} Z" fill="${se.area}"/>`;
+    s += `<polyline points="${pts.join(" ")}" fill="none" stroke="${se.color}" stroke-width="${se.width || 2}" ${se.dash ? `stroke-dasharray="${se.dash}"` : ""} stroke-linejoin="round" stroke-linecap="round" opacity="${se.opacity ?? 1}"/>`;
+    if (se.dots) se.values.forEach((v, i) => { s += `<circle cx="${X(i)}" cy="${Y(v)}" r="${se.dots}" fill="#fff" stroke="${se.color}" stroke-width="2.4"/>`; });
+  }
+  s += extra(X, Y, n) + "</svg>";
+  return s;
+}
+const spark = (values, color, w = 84, h = 26) => chart({ w, h, padL: 3, padR: 3, padT: 4, padB: 4, invert: true, yMin: 1, yMax: 12, series: [{ values, color, width: 2 }] });
+
+/* ---------- A: cute terminal ---------- */
+const L = {
+  en: { rank: (r) => "#" + r, times: (n) => `${n}×`, streak: (n) => `${n} days in a row ✦` },
+  ja: { rank: (r) => r + "位", times: (n) => `${n}回`, streak: (n) => `${n}日連続 ✦` },
+  ko: { rank: (r) => r + "위", times: (n) => `${n}회`, streak: (n) => `${n}일 연속 ✦` },
+};
+const T = {
+  brandA: { en: "Uranai Stock Exchange", ja: "うらない証券取引所", ko: "운세 증권거래소" },
+  brandC: { en: "Zodiac Market Board", ja: "星座ランキング市場", ko: "별자리 랭킹 시장" },
+  watch: { en: "Today's board", ja: "今日の銘柄", ko: "오늘의 종목" },
+  chart: { en: "Rank chart", ja: "順位チャート", ko: "순위 차트" },
+  gainers: { en: "Top gainers ↗", ja: "急上昇 ↗", ko: "급상승 ↗" },
+  losers: { en: "Top losers ↘", ja: "急降下 ↘", ko: "급하락 ↘" },
+  streaks: { en: "Hot streaks", ja: "連続トップ3", ko: "연속 톱3" },
+  race: { en: "Rank race", ja: "順位レース", ko: "순위 레이스" },
+  stampcal: { en: "Stamp calendar", ja: "スタンプカレンダー", ko: "스탬프 캘린더" },
+  thSign: { en: "Sign", ja: "星座", ko: "별자리" }, thRank: { en: "Rank", ja: "順位", ko: "순위" },
+  thChg: { en: "Chg", ja: "前日比", ko: "전일비" }, thHiLo: { en: "Best/Worst", ja: "最高/最低", ko: "최고/최저" },
+  vsYesterday: { en: "vs yesterday", ja: "前日比", ko: "전일비" },
+  avg: { en: "AVG", ja: "平均", ko: "평균" }, best: { en: "BEST", ja: "最高", ko: "최고" },
+  ones: { en: "#1", ja: "1位", ko: "1위" }, swing: { en: "SWING", ja: "ゆれ", ko: "변동" },
+  hint: { en: "Tap to open the market board ↗", ja: "タップで市場ボードへ ↗", ko: "탭해서 시장 보드로 ↗" },
+  back: { en: "← Main", ja: "← メインへ", ko: "← 메인으로" },
+  main: { en: "Main", ja: "メイン", ko: "메인" }, board: { en: "Market board", ja: "市場ボード", ko: "시장 보드" },
+  sameSign: { en: "same sign", ja: "同じ星座", ko: "같은 별자리" },
+  starDay: { en: "★ = #1 day", ja: "★ = 1位の日", ko: "★ = 1위한 날" },
+  higher: { en: "higher is better", ja: "上ほど良い順位", ko: "위로 갈수록 좋은 순위" },
+  noStreak: { en: "No streaks right now", ja: "いまは連続ランクインなし", ko: "지금은 연속 랭크인 없음" },
+  mvp: { en: "Weekly MVP", ja: "今週のMVP", ko: "이번 주 MVP" }, cheer: { en: "Hang in there", ja: "がんばれ賞", ko: "힘내라상" },
+  king: { en: "#1 King", ja: "1位王", ko: "1위왕" }, chip: { en: "Blue chip", ja: "安定株", ko: "우량주" },
+  vsLastWeek: { en: "vs last week", ja: "先週より", ko: "지난주 대비" },
+  ones3m: { en: "#1 in 3 months", ja: "3か月で1位", ko: "3개월간 1위" },
+  avg3m: { en: "3-month average", ja: "3か月の平均", ko: "3개월 평균" },
+  close: { en: "close", ja: "終値", ko: "종가" },
+  raceHint: { en: "tap a character to follow it", ja: "キャラをタップして追いかけよう", ko: "캐릭터를 탭해서 따라가 보세요" },
+  calHint: { en: "one stamp per morning", ja: "毎朝ひとつスタンプ", ko: "아침마다 스탬프 하나" },
+  top: { en: "Top", ja: "上位", ko: "상위" }, middle: { en: "Middle", ja: "まんなか", ko: "중간" }, bottom: { en: "Bottom", ja: "下位", ko: "하위" },
+  ok: { en: "Looks right!", ja: "この流れでOK！", ko: "이대로 좋아요!" },
+  mood: {
+    en: ["#1! Hooray ✦", "Feeling good ♪", "Pretty normal day", "Taking it slow~", "A little gloomy…", "Tomorrow we rise…!"],
+    ja: ["1位だよ！やったー ✦", "いい感じ〜♪", "まあまあ、ふつう日和", "のんびりいこう〜", "ちょっと しょんぼり…", "明日はきっと上がる…！"],
+    ko: ["1위다! 야호 ✦", "기분 좋아~♪", "그럭저럭 평범한 날", "느긋하게 가자~", "조금 시무룩…", "내일은 꼭 오를 거야…!"],
+  },
+  src: { ohaasa: { en: "Ohaasa", ja: "おはあさ", ko: "오하아사" }, gogo: { en: "Gogo", ja: "ゴーゴー", ko: "고고" } },
+  ranges: { en: ["1W", "1M", "3M"], ja: ["1週", "1か月", "3か月"], ko: ["1주", "1개월", "3개월"] },
+};
+const KO = ["양자리", "황소자리", "쌍둥이자리", "게자리", "사자자리", "처녀자리", "천칭자리", "전갈자리", "궁수자리", "염소자리", "물병자리", "물고기자리"];
+SIGNS.forEach((sg, i) => { sg.ko = KO[i]; });
+
+const t = (key) => T[key][state.lang];
+// Small flavor label: Japanese under English and Korean, English under Japanese.
+const flavor = (key) => (state.lang === "ja" ? T[key].en.toUpperCase() : T[key].ja);
+const h3 = (key, extra = "") => `<h3>${t(key)} <small>${flavor(key)}${extra}</small></h3>`;
+const rk = (r) => L[state.lang].rank(r);
+const signName = (i) => (state.lang === "en" ? SIGNS[i].name : SIGNS[i][state.lang]);
+const srcName = (s) => T.src[s][state.lang];
+const rangeName = () => T.ranges[state.lang][RANGES.indexOf(state.range)];
+function moodText(r) {
+  const m = T.mood[state.lang];
+  return r === 1 ? m[0] : r <= 3 ? m[1] : r <= 6 ? m[2] : r <= 9 ? m[3] : r <= 11 ? m[4] : m[5];
+}
+const rankTicks = () => [1, 3, 6, 9, 12].map((v) => ({ v, label: rk(v) }));
+const segs = () => `<span class="pills">${["ohaasa", "gogo"].map((x) => `<button data-source="${x}" class="${x === state.source ? "on" : ""}">${srcName(x)}</button>`).join("")}</span>
+  <span class="pills">${RANGES.map((v, k) => `<button data-range="${v}" class="${v === state.range ? "on" : ""}">${T.ranges[state.lang][k]}</button>`).join("")}</span>`;
+const bigRank = (r) => (state.lang === "en"
+  ? `<small style="font-size:22px">#</small>${r}`
+  : `${r}<small style="font-size:18px">${state.lang === "ja" ? "位" : "위"}</small>`);
+
+/* ---------- Main page (A) ---------- */
+function renderA() {
+  const R = DATA[state.source], other = state.source === "ohaasa" ? "gogo" : "ohaasa";
+  const today = (i) => R[i][N - 1], chg = (i) => R[i][N - 2] - R[i][N - 1];
+  const tape = SIGNS.map((sg, i) => `<span class="tick">${mochi(i, today(i), 22)} ${sg.t} <span class="num">${rk(today(i))}</span> <span class="${cls(chg(i))} num">${arrow(chg(i))}${Math.abs(chg(i)) || ""}</span></span>`).join("");
+  const order = SIGNS.map((_, i) => i).sort((x, y) => today(x) - today(y));
+  const rows = order.map((i) => {
+    const rs = range(R[i]), st = stats(rs), c = chg(i);
+    return `<tr class="row ${i === state.sign ? "sel" : ""}" data-sign="${i}">
+      <td><span class="who">${mochi(i, today(i), 30)} ${signName(i)}</span></td>
+      <td>${badge(today(i))}</td>
+      <td><span class="chgpill num ${cls(c)}">${arrow(c)}${Math.abs(c) || ""}</span></td>
+      <td style="width:92px">${spark(rs, SIGNS[i].line)}</td>
+      <td class="num"><span class="up">${st.best}</span> / <span class="dn">${st.worst}</span></td></tr>`;
+  }).join("");
+
+  const s = state.sign, mine = range(R[s]), theirs = range(DATA[other][s]), st = stats(mine), days = rangeDays();
+  const main = chart({ w: 760, h: 300, invert: true, yMin: 1, yMax: 12, yTicks: rankTicks(), xLabels: xTicks(days, state.range === 5 ? 5 : 6),
+    series: [
+      { values: theirs, color: "#d8c6ba", width: 2, dash: "1 7" },
+      { values: mine, color: SIGNS[s].line, width: 4, dots: state.range <= 21 ? 4 : 0, area: SIGNS[s].pastel },
+    ],
+    extra: (X, Y) => mine.map((r, i) => (r === 1 ? `<text x="${X(i)}" y="${Y(1) - 10}" text-anchor="middle" font-size="18" fill="#ffc21a" stroke="${INK}" stroke-width="1">★</text>` : "")).join(""),
+  }).replace(`fill="${SIGNS[s].pastel}"`, `fill="${SIGNS[s].pastel}" opacity=".45"`);
+
+  const movers = (dir) => order.slice().sort((x, y) => dir * (chg(y) - chg(x))).slice(0, 4).map((i) =>
+    `<div class="mover" data-sign="${i}"><span class="who">${mochi(i, today(i), 28)} ${signName(i)} <small class="num" style="color:var(--soft)">${rk(R[i][N - 2])}→${rk(today(i))}</small></span><span class="chgpill num ${cls(chg(i))}">${arrow(chg(i))}${Math.abs(chg(i)) || ""}</span></div>`).join("");
+  const streaks = order.map((i) => [i, stats(R[i]).current]).filter(([, c]) => c > 0).sort((x, y) => y[1] - x[1]).slice(0, 4)
+    .map(([i, c]) => `<div class="mover" data-sign="${i}"><span class="who">${mochi(i, today(i), 28)} ${signName(i)}</span><span class="up num" style="font-weight:900">${L[state.lang].streak(c)}</span></div>`).join("")
+    || `<div class="flat">${t("noStreak")}</div>`;
+  const altName = state.lang === "en" ? SIGNS[s].ja : SIGNS[s].name;
+
+  return `<div class="tape"><div class="tape-inner">${tape}${tape}</div></div>
+  <div class="wrap">
+    <div class="top"><div class="brand">☆ ${t("brandA")}<small>${flavor("brandA")} · <span id="aclock"></span></small></div>${segs()}</div>
+    <div class="agrid">
+      <div class="card">${h3("watch")}
+        <table><thead><tr><th>${t("thSign")}</th><th>${t("thRank")}</th><th>${t("thChg")}</th><th>${rangeName()}</th><th>${t("thHiLo")}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="card">${h3("chart")}
+        <div class="hero">${mochi(s, today(s), 92)}
+          <div><div style="font-weight:900">${SIGNS[s].sym} ${signName(s)} <small style="color:var(--soft)">${altName}</small></div>
+            <div class="bigrank num">${bigRank(today(s))} <span class="chgpill num ${cls(chg(s))}" style="font-size:14px;vertical-align:middle">${arrow(chg(s))}${Math.abs(chg(s)) || ""} ${t("vsYesterday")}</span></div></div>
+          <div class="bubble">${moodText(today(s))}</div></div>
+        <div class="chartlink" data-view="c">${main}<span class="hint">${t("hint")}</span></div>
+        <div class="legend">━ ${srcName(state.source)} &nbsp; ··· ${srcName(other)} (${t("sameSign")}) &nbsp; ${t("starDay")} &nbsp; ${t("higher")}</div>
+        <div class="stats">
+          <div class="stat"><span class="hanko">${t("avg")}</span><b class="num">${rk(st.avg.toFixed(1))}</b></div>
+          <div class="stat"><span class="hanko">${t("best")}</span><b class="num">${rk(st.best)} / ${rk(st.worst)}</b></div>
+          <div class="stat"><span class="hanko">${t("ones")}</span><b class="num">${L[state.lang].times(st.ones)}</b></div>
+          <div class="stat"><span class="hanko">${t("swing")}</span><b class="num">${st.sd.toFixed(1)}</b></div>
+        </div></div>
+    </div>
+    <div class="abottom">
+      <div class="card">${h3("gainers")}${movers(1)}</div>
+      <div class="card">${h3("losers")}${movers(-1)}</div>
+      <div class="card">${h3("streaks")}${streaks}</div>
+    </div>
+  </div>
+  <div class="pickbar"><button class="pick" data-choice="v2-main">${t("ok")}</button></div>`;
+}
+
+/* ---------- Market board (C) ---------- */
+function stampColor(r) {
+  if (r === 1) return "#ff6f91";
+  const x = (r - 1) / 11;
+  return x < 0.5 ? `hsla(345,95%,74%,${(1 - x * 2) * 0.9 + 0.1})` : `hsla(215,70%,72%,${(x - 0.5) * 2 * 0.9 + 0.1})`;
+}
+function renderC() {
+  const R = DATA[state.source], s = state.sign, days = rangeDays(), today = (i) => R[i][N - 1];
+  const order = SIGNS.map((_, i) => i).sort((x, y) => (x === s) - (y === s));
+  const bump = chart({ w: 1000, h: 400, invert: true, yMin: 1, yMax: 12, padL: 36, padR: 54, padT: 18, yTicks: rankTicks(),
+    xLabels: xTicks(days, state.range === 5 ? 5 : 7),
+    series: order.map((i) => ({ values: range(R[i]), color: SIGNS[i].line, width: i === s ? 5 : 2.4, opacity: i === s ? 1 : 0.35, dots: i === s && state.range <= 21 ? 4 : 0 })),
+    extra: (X, Y, n) => order.map((i) => {
+      const size = i === s ? 34 : 24, y = Y(today(i));
+      return `<g data-sign="${i}" style="cursor:pointer"><svg x="${X(n - 1) + 6}" y="${y - size * 0.55}" width="${size}" height="${size}">${mochi(i, today(i), size)}</svg></g>`;
+    }).join(""),
+  });
+  const week = (i) => avg(R[i].slice(N - 10, N - 5)) - avg(R[i].slice(N - 5));
+  const idx = SIGNS.map((_, i) => i);
+  const gainer = idx.slice().sort((x, y) => week(y) - week(x))[0];
+  const loser = idx.slice().sort((x, y) => week(x) - week(y))[0];
+  const champ = idx.slice().sort((x, y) => stats(R[y]).ones - stats(R[x]).ones)[0];
+  const steady = idx.slice().sort((x, y) => stats(R[x]).avg - stats(R[y]).avg)[0];
+  const kpi = (i, stamp, desc, value, c) => `<div class="kpi" data-sign="${i}"><span class="face">${mochi(i, today(i), 62)}</span><span class="hanko">${t(stamp)}</span>
+    <b>${signName(i)}</b><span>${t(desc)}</span> <span class="${c} num" style="font-weight:900">${value}</span></div>`;
+
+  const dateRow = DAYS.map((d, k) => `<div class="day">${k % 10 === 0 ? fmtDate(d) : ""}</div>`).join("");
+  const rows = idx.map((i) => `<div class="lab ${i === s ? "sel" : ""}" data-sign="${i}">${mochi(i, today(i), 22)} ${signName(i)}</div>` +
+    R[i].map((r, k) => `<div class="stamp" style="background:${stampColor(r)}${i === s ? ";box-shadow:0 0 0 2px #4b3a34" : ""}" title="${signName(i)} · ${DAYS[k]} · ${rk(r)}">${r === 1 ? "★" : ""}</div>`).join("")).join("");
+
+  return `<div class="wrap">
+    <div class="top"><button class="back" data-view="a">${t("back")}</button><div class="brand">☆ ${t("brandC")}<small>${flavor("brandC")} · ${fmtDate(DAYS[N - 1])} ${t("close")}</small></div>${segs()}</div>
+    <div class="kpis">
+      ${kpi(gainer, "mvp", "vsLastWeek", `▲${week(gainer).toFixed(1)}`, "up")}
+      ${kpi(loser, "cheer", "vsLastWeek", `▼${Math.abs(week(loser)).toFixed(1)}`, "dn")}
+      ${kpi(champ, "king", "ones3m", L[state.lang].times(stats(R[champ]).ones), "up")}
+      ${kpi(steady, "chip", "avg3m", rk(stats(R[steady]).avg.toFixed(1)), "up")}
+    </div>
+    <div class="card" style="margin-bottom:14px">${h3("race", " · " + t("raceHint"))}
+      ${bump}
+      <div class="chips">${idx.map((i) => `<button data-sign="${i}" class="${i === s ? "on" : ""}">${mochi(i, today(i), 22)} ${signName(i)}</button>`).join("")}</div></div>
+    <div class="card">${h3("stampcal", " · " + t("calHint"))}
+      <div class="stamps" style="grid-template-columns: 118px repeat(${N}, minmax(7px, 1fr))"><div></div>${dateRow}${rows}</div>
+      <div class="scale"><span><i style="background:#ff6f91"></i> ★${rk(1)}</span><span><i style="background:${stampColor(3)}"></i> ${t("top")}</span>
+        <span><i style="background:${stampColor(6)}"></i> ${t("middle")}</span><span><i style="background:${stampColor(12)}"></i> ${t("bottom")}</span></div></div>
+  </div>
+  <div class="pickbar"><button class="pick" data-choice="v2-board">${t("ok")}</button></div>`;
+}
+
+/* ---------- Language page ---------- */
+function renderLang() {
+  const opts = [["en", "English", "Hello!", 0], ["ja", "日本語", "こんにちは！", 6], ["ko", "한국어", "안녕하세요!", 11]];
+  return `<div class="langpage"><button class="back" data-view="${state.returnTo}" style="align-self:flex-start">${t("back")}</button>
+    <div class="langhero"><span>${mochi(4, 2, 78)}</span><span>${mochi(6, 1, 96)}</span><span>${mochi(10, 2, 78)}</span></div>
+    <h1>☆ Rank Market</h1>
+    <p class="langsub">Choose your language<br>ことばをえらんでね<br>언어를 골라 주세요</p>
+    <div class="langopts">${opts.map(([code, label, hello, sign]) => `<button class="langopt ${code === state.lang ? "on" : ""}" data-lang="${code}">${mochi(sign, 2, 58)}<b>${label}</b><span>${hello}</span></button>`).join("")}</div>
+    <p class="langnote">Change it anytime from the top bar · あとで上のバーから変えられます · 상단 바에서 언제든 바꿀 수 있어요</p>
+  </div>`;
+}
+
+function render() {
+  document.documentElement.lang = state.lang;
+  document.body.classList.toggle("ko", state.lang === "ko");
+  document.querySelectorAll(".design").forEach((d) => d.classList.toggle("on", d.id === state.design));
+  document.getElementById("barctl").style.visibility = state.design === "lang" ? "hidden" : "visible";
+  document.getElementById("crumb").textContent = state.design === "c" ? `${t("main")} › ${t("board")}` : t("main");
+  document.getElementById("langpills").innerHTML =
+    `<button data-view="lang">あ/A ${{ en: "English", ja: "日本語", ko: "한국어" }[state.lang]} ▾</button>`;
+  document.getElementById(state.design).innerHTML = state.design === "lang" ? renderLang() : state.design === "a" ? renderA() : renderC();
+  tickClock();
+}
+function tickClock() {
+  const c = document.getElementById("aclock");
+  if (c) c.textContent = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tokyo", hour: "2-digit", minute: "2-digit" }).format(new Date()) + " JST";
+}
+setInterval(tickClock, 15000);
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-sign],[data-source],[data-range],[data-view],[data-lang]");
+  if (!el) return;
+  const d = el.dataset;
+  if (d.sign !== undefined) state.sign = +d.sign;
+  if (d.source) state.source = d.source;
+  if (d.range) state.range = +d.range;
+  if (d.lang) {
+    state.lang = d.lang;
+    try { localStorage.setItem("rank-market-lang", d.lang); } catch {}
+    if (state.design === "lang") { state.design = state.returnTo; history.replaceState(null, "", "#" + state.design); window.scrollTo(0, 0); }
+  }
+  if (d.view) { if (d.view === "lang") state.returnTo = state.design; state.design = d.view; history.pushState(null, "", "#" + d.view); window.scrollTo(0, 0); }
+  render();
+});
+window.addEventListener("popstate", () => {
+  state.design = location.hash === "#c" ? "c" : location.hash === "#lang" ? "lang" : "a";
+  render();
+});
+render();
+</script>
+</body>
+</html>
