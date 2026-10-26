@@ -34,6 +34,7 @@ export type IngestSourceInput = {
   force: boolean;
   repository: FortuneRepository;
   clients: SourceClients;
+  sourceResponse?: SourceResponse;
   now: () => Date;
 };
 
@@ -114,7 +115,7 @@ async function finishAndReturn(
 export async function ingestSource(
   input: IngestSourceInput,
 ): Promise<IngestionResult> {
-  const { source, targetDate, attempt, force, repository, clients, now } = input;
+  const { source, targetDate, attempt, force, repository, clients, sourceResponse, now } = input;
   const runId = await repository.startRun({
     source,
     targetDate,
@@ -162,7 +163,7 @@ export async function ingestSource(
 
   let httpStatus: number | null = null;
   try {
-    const response = await clients[source].fetch(targetDate);
+    const response = sourceResponse ?? await clients[source].fetch(targetDate);
     httpStatus = response.httpStatus;
     const edition =
       source === "ohaasa"

@@ -5,7 +5,7 @@ import { InvalidEditionError, StaleSourceError } from "@/features/fortune/errors
 import { zodiacFromOhaasaCode } from "@/features/fortune/zodiac";
 
 const ohaasaDetailSchema = z.object({
-  ranking_no: z.number().int().min(1).max(12),
+  ranking_no: z.union([z.number(), z.string().regex(/^(?:[1-9]|1[0-2])$/).transform(Number)]).pipe(z.number().int().min(1).max(12)),
   horoscope_st: z.string().regex(/^\d{2}$/),
   horoscope_text: z.string().min(1),
 });

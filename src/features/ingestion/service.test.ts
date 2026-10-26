@@ -175,6 +175,15 @@ describe("ingestSource", () => {
     expect(test.repository.saveEdition).not.toHaveBeenCalled();
   });
 
+  it("uses runner-fetched content instead of fetching from the server", async () => {
+    const test = makeServiceInput({ source: "ohaasa" });
+    const liveStyle = structuredClone(ohaasaFixture);
+    expect((await ingestSource({
+      ...test.input, sourceResponse: { body: liveStyle, httpStatus: 200 },
+    })).status).toBe("success");
+    expect(test.selectedFetch).not.toHaveBeenCalled();
+  });
+
   it("records stale data without saving it", async () => {
     const stale = structuredClone(ohaasaFixture);
     stale[0].onair_date = "20260825";

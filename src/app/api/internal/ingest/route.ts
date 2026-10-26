@@ -24,12 +24,14 @@ const bodySchema = z.object({
   attempt: z.enum(["primary", "retry_1", "retry_2", "final", "manual"]),
   source: z.enum(["all", ...SOURCES]),
   force: z.boolean(),
-});
+  sourceBody: z.union([z.string().min(1), z.array(z.unknown())]).optional(),
+}).refine((body) => body.sourceBody === undefined ||
+  (body.source !== "all" && (body.source === "gogo") === (typeof body.sourceBody === "string")));
 
 type RequestBody = z.infer<typeof bodySchema>;
 type HandlerIngestInput = Pick<
   IngestSourceInput,
-  "source" | "targetDate" | "attempt" | "force"
+  "source" | "targetDate" | "attempt" | "force" | "sourceResponse"
 >;
 type HandlerIngest = (input: HandlerIngestInput) => Promise<IngestionResult>;
 
@@ -47,7 +49,9 @@ function selectedSources(source: RequestBody["source"]): Source[] {
 
 async function parseBody(request: Request): Promise<RequestBody | null> {
   try {
-    return bodySchema.parse(await request.json());
+    const text = await request.text();
+    if (text.length > 1_000_000) return null;
+    return bodySchema.parse(JSON.parse(text));
   } catch {
     return null;
   }
@@ -83,6 +87,9 @@ export function createPostHandler(dependencies: HandlerDependencies) {
           targetDate,
           attempt: body.attempt,
           force: body.force,
+          ...(body.sourceBody === undefined ? {} : {
+            sourceResponse: { body: body.sourceBody, httpStatus: 200 },
+          }),
         }),
       ),
     );

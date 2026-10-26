@@ -38,7 +38,7 @@ In the repository or environment used by `.github/workflows/ingest.yml`, set:
 - `INGEST_URL` — `https://<vercel-domain>/api/internal/ingest`
 - `INGEST_SECRET` — exactly the same value configured in Vercel.
 
-The workflow must not print either value. It calls the endpoint with `curl --fail-with-body --silent --show-error`.
+The workflow must not print either value or raw source content. The GitHub runner fetches each selected source and sends it as `sourceBody` in a separate authenticated request, so Vercel does not need access to the source site. If the runner cannot fetch a source, the request omits `sourceBody` and the endpoint tries its own fetch; the final attempt still fails if the source remains unresolved. The endpoint validates the date and all 12 ranks before saving. It calls the endpoint with `curl --fail-with-body --silent --show-error`.
 
 ## Schedule
 
@@ -83,7 +83,7 @@ Ohaasa can be `not_expected` on weekends and Japanese public holidays. Gogo is e
 
 - `stale`: source date did not match the Asia/Tokyo target date. Do not relabel old data as current.
 - `invalid`: parser or validator rejected the source shape, duplicate signs/ranks, missing required fields, or unknown source tokens.
-- `fetch_error`: HTTP/network/JSON/text read failure. Run records store only constrained error codes and fixed summaries.
+- `fetch_error`: HTTP/network/JSON/text read failure from both the runner and the endpoint. Run records store only constrained error codes and fixed summaries.
 
 Do not paste full source bodies or copied fortune prose into logs, issues, or failed-run records. Use structural symptoms, status codes, source date labels, parser version, and content hashes.
 

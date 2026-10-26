@@ -9,6 +9,7 @@ function makeRequest(body: {
   attempt: IngestionAttempt;
   source: Source | "all";
   force: boolean;
+  sourceBody?: unknown;
 }, secret = "correct-secret") {
   return new Request("http://test/api/internal/ingest", {
     method: "POST",
@@ -66,6 +67,33 @@ describe("POST /api/internal/ingest", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({ targetDate: "2026-08-26", results: [result("gogo", "success")] });
     expect(ingest).toHaveBeenCalledWith({ source: "gogo", targetDate: "2026-08-26", attempt: "primary", force: false });
+  });
+
+  it("passes runner-fetched HTML to the ingestion service", async () => {
+    const ingest = vi.fn().mockResolvedValue(result("gogo", "success"));
+    const handler = createPostHandler({ ingest, now: fixedNow, secret: "correct-secret" });
+
+    const response = await handler(makeRequest({
+      attempt: "primary", source: "gogo", force: false, sourceBody: "<html>invented</html>",
+    }));
+
+    expect(response.status).toBe(200);
+    expect(ingest).toHaveBeenCalledWith({
+      source: "gogo", targetDate: "2026-08-26", attempt: "primary", force: false,
+      sourceResponse: { body: "<html>invented</html>", httpStatus: 200 },
+    });
+  });
+
+  it("rejects mismatched, all-source, or oversized forwarded content", async () => {
+    const ingest = vi.fn();
+    const handler = createPostHandler({ ingest, now: fixedNow, secret: "correct-secret" });
+    for (const [source, sourceBody] of [
+      ["gogo", []], ["ohaasa", "<html>"], ["all", "<html>"],
+      ["gogo", "x".repeat(1_000_001)],
+    ] as const) {
+      expect((await handler(makeRequest({ attempt: "primary", source, force: false, sourceBody }))).status).toBe(400);
+    }
+    expect(ingest).not.toHaveBeenCalled();
   });
 
   it("ingests both sources for all", async () => {

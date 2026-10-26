@@ -22,6 +22,9 @@ jobs:
     env:
       INGEST_URL: ${{ secrets.INGEST_URL }}
       INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+      SCHEDULE: ${{ github.event.schedule }}
+      SOURCE_INPUT: ${{ github.event.inputs.source || 'all' }}
+      FORCE_INPUT: ${{ github.event.inputs.force || 'false' }}
     steps:
       - name: Validate ingestion configuration
         shell: bash
@@ -32,7 +35,7 @@ jobs:
             missing=true
           fi
           if [[ -z "${INGEST_SECRET:-}" ]]; then
-            echo "::error::Required Actions secret INGEST_SECRET is not configured"
+            echo "::error::INGEST_SECRET is not configured"
             missing=true
           fi
           if [[ "$missing" == "true" ]]; then
@@ -43,7 +46,7 @@ jobs:
         id: attempt
         shell: bash
         run: |
-          case "${{ github.event.schedule }}" in
+          case "$SCHEDULE" in
             "15 20 * * *") attempt="primary" ;;
             "15 21 * * *") attempt="retry_1" ;;
             "45 22 * * *") attempt="retry_2" ;;
@@ -52,21 +55,50 @@ jobs:
           esac
           echo "attempt=$attempt" >> "$GITHUB_OUTPUT"
 
-      - name: Call protected ingestion endpoint
+      - name: Fetch sources and call protected ingestion endpoint
+        env:
+          ATTEMPT: ${{ steps.attempt.outputs.attempt }}
         shell: bash
         run: |
-          source_input="${{ github.event.inputs.source || 'all' }}"
-          force_input="${{ github.event.inputs.force || 'false' }}"
-          BODY=$(jq -n \
-            --arg attempt "${{ steps.attempt.outputs.attempt }}" \
-            --arg source "$source_input" \
-            --argjson force "$force_input" \
-            '{ attempt: $attempt, source: $source, force: $force }')
-
-          curl --fail-with-body --silent --show-error \
-            --connect-timeout 10 \
-            --max-time 120 \
-            -X POST "$INGEST_URL" \
-            -H "Authorization: Bearer $INGEST_SECRET" \
-            -H "Content-Type: application/json" \
-            --data "$BODY"
+          source_input="$SOURCE_INPUT"
+          force_input="$FORCE_INPUT"
+          failed=0
+          for source in ohaasa gogo; do
+            if [[ "$source_input" != "all" ]] && [[ "$source_input" != "$source" ]]; then
+              continue
+            fi
+            if [[ "$source" == "ohaasa" ]]; then
+              url="https://www.asahi.co.jp/data/ohaasa2020/horoscope.json"
+            else
+              url="https://www.tv-asahi.co.jp/goodmorning/uranai/"
+            fi
+            body=$(jq -n --arg attempt "$ATTEMPT" \
+              --arg source "$source" --argjson force "$force_input" \
+              '{attempt: $attempt, source: $source, force: $force}')
+            file=$(mktemp)
+            if curl --fail --location --silent --show-error \
+              --connect-timeout 10 --max-time 30 \
+              --user-agent 'Oohaasa-graph/1.0 (github.com/oohasa-graph)' \
+              --output "$file" "$url"; then
+              if [[ "$source" == "gogo" ]]; then
+                body=$(jq -n --argjson request "$body" \
+                  --rawfile content "$file" \
+                  '$request + {sourceBody: $content}')
+              else
+                body=$(jq -n --argjson request "$body" \
+                  --slurpfile content "$file" \
+                  '$request + {sourceBody: $content[0]}')
+              fi
+            fi
+            rm -f "$file"
+            if ! curl --fail-with-body --silent --show-error \
+              --connect-timeout 10 --max-time 120 \
+              -X POST "$INGEST_URL" \
+              -H "Authorization: Bearer $INGEST_SECRET" \
+              -H "Content-Type: application/json" \
+              --data "$body"; then
+              failed=1
+            fi
+            echo
+          done
+          exit "$failed"

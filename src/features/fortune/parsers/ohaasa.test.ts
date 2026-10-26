@@ -45,6 +45,18 @@ describe("parseOhaasa", () => {
     });
   });
 
+  it("accepts live-style string rankings without loosening rank validation", () => {
+    const liveStyle = structuredClone(fixture);
+    const details = liveStyle[0].detail as Array<Omit<(typeof fixture)[0]["detail"][number], "ranking_no"> & { ranking_no: number | string }>;
+    for (const detail of details) detail.ranking_no = String(detail.ranking_no);
+
+    expect(parseOhaasa(liveStyle, "2026-08-26").fortunes.map((item) => item.rank).sort((a, b) => a - b)).toEqual(
+      Array.from({ length: 12 }, (_, index) => index + 1),
+    );
+    details[0].ranking_no = "1st";
+    expect(() => parseOhaasa(liveStyle, "2026-08-26")).toThrow(InvalidEditionError);
+  });
+
   it("rejects stale dates and malformed lucky boundaries with typed errors", () => {
     const stale = () => parseOhaasa(fixture, "2026-08-27");
 
