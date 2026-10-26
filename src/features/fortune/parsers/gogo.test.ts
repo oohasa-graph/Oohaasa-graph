@@ -68,6 +68,25 @@ describe("parseGogo", () => {
     expect(parseGogo($.html(), "2026-08-26").fortunes).toHaveLength(12);
   });
 
+  it("parses category-icon boxes without inventing an omitted lucky color", () => {
+    const $ = load(html);
+    $(".lucky-box").each((_, box) => {
+      $(box).replaceWith(
+        '<div class="score-area">' +
+        (["money", "love", "work", "health"] as const).map((category, index) =>
+          `<div class="lucky-box">${`<span class="icon-${category}"></span>`.repeat(index + 1)}</div>`,
+        ).join("") + '</div>',
+      );
+    });
+
+    const edition = parseGogo($.html(), "2026-08-26");
+    const aries = edition.fortunes.find((item) => item.zodiacCode === "aries");
+    expect(aries).toMatchObject({
+      luckyColor: null, luckyKey: null,
+      scores: { money: 1, love: 2, work: 3, health: 4 },
+    });
+  });
+
   it("leaves an omitted score category neutral", () => {
     const signStart = html.indexOf('<article id="tenbin">');
     const luckyStart = html.indexOf('<div class="lucky-box">', signStart);

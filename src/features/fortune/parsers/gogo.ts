@@ -163,16 +163,12 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
       }
 
       const luckyBoxes = details.find(".lucky-box");
-      if (luckyBoxes.length !== 1) {
-        return invalid("Gogo lucky structure is invalid");
-      }
-      const luckyBox = luckyBoxes.first();
       const luckyValue = (
         selector: string,
         label: string,
         errorMessage: string,
       ): string => {
-        const labels = luckyBox.find(selector);
+        const labels = details.find(selector);
         if (labels.length !== 1 || labels.text().trim() !== label) {
           return invalid(errorMessage);
         }
@@ -186,37 +182,49 @@ export function parseGogo(html: string, expectedDate: string): ParsedEdition {
         return valueMatch[1].trim();
       };
 
-      const luckyColor = luckyValue(
-        ".color-txt",
-        "ラッキーカラー",
-        "Gogo lucky color is invalid",
-      );
-      const luckyKey = luckyValue(
-        ".key-txt",
-        "幸運のカギ",
-        "Gogo lucky key is invalid",
-      );
-
-      const scoreFor = (category: keyof FortuneScores): number | null => {
-        const containers = luckyBox.children(`.${category}`);
-        if (containers.length === 0) {
-          return null;
-        }
-        if (containers.length > 1) {
-          return invalid("Gogo score structure is invalid");
-        }
-        const score = containers.find("img").length;
-        if (score < 1 || score > 5) {
-          return invalid("Gogo score is invalid");
-        }
-        return score;
-      };
-      const scores: FortuneScores = {
-        money: scoreFor("money"),
-        love: scoreFor("love"),
-        work: scoreFor("work"),
-        health: scoreFor("health"),
-      };
+      let luckyColor: string | null;
+      let luckyKey: string | null;
+      let scores: FortuneScores;
+      if (luckyBoxes.length === 1) {
+        const luckyBox = luckyBoxes.first();
+        luckyColor = luckyValue(".color-txt", "ラッキーカラー", "Gogo lucky color is invalid");
+        luckyKey = luckyValue(".key-txt", "幸運のカギ", "Gogo lucky key is invalid");
+        const scoreFor = (category: keyof FortuneScores): number | null => {
+          const containers = luckyBox.children(`.${category}`);
+          if (containers.length === 0) return null;
+          if (containers.length > 1) return invalid("Gogo score structure is invalid");
+          const score = containers.find("img").length;
+          if (score < 1 || score > 5) return invalid("Gogo score is invalid");
+          return score;
+        };
+        scores = {
+          money: scoreFor("money"), love: scoreFor("love"),
+          work: scoreFor("work"), health: scoreFor("health"),
+        };
+      } else if (luckyBoxes.length === 4) {
+        luckyColor = null; // The current page omits the color; never invent one.
+        luckyKey = details.find(".key-txt").length === 1
+          ? luckyValue(".key-txt", "幸運のカギ", "Gogo lucky key is invalid")
+          : null;
+        const scoreFor = (category: keyof FortuneScores): number => {
+          const boxes = luckyBoxes.filter((_, box) =>
+            $(box).children(`.icon-${category}`).length > 0,
+          );
+          if (boxes.length !== 1) return invalid("Gogo score structure is invalid");
+          const icons = boxes.first().children();
+          if (icons.length < 1 || icons.length > 5 ||
+              icons.filter(`.icon-${category}`).length !== icons.length) {
+            return invalid("Gogo score is invalid");
+          }
+          return icons.length;
+        };
+        scores = {
+          money: scoreFor("money"), love: scoreFor("love"),
+          work: scoreFor("work"), health: scoreFor("health"),
+        };
+      } else {
+        return invalid("Gogo lucky structure is invalid");
+      }
 
       const winnerCategories: WinnerCategory[] = [];
       details.find(".number-one-area").each((_, marker) => {

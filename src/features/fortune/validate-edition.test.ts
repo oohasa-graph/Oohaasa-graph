@@ -96,10 +96,16 @@ describe("validateEdition", () => {
     });
     expect(() => validateEdition(missingGogoColor, "2026-08-26")).toThrow(/lucky color/i);
 
-    const missingGogoKey = invalidEdition((edition) => {
+    const emptyGogoKey = invalidEdition((edition) => {
+      edition.fortunes[0].luckyKey = "";
+    });
+    expect(() => validateEdition(emptyGogoKey, "2026-08-26")).toThrow(/lucky key/i);
+
+    const omittedGogoFields = invalidEdition((edition) => {
+      edition.fortunes[0].luckyColor = null;
       edition.fortunes[0].luckyKey = null;
     });
-    expect(() => validateEdition(missingGogoKey, "2026-08-26")).toThrow(/lucky key/i);
+    expect(() => validateEdition(omittedGogoFields, "2026-08-26")).not.toThrow();
   });
 
   it("rejects unknown winner categories", () => {

@@ -61,11 +61,11 @@ export function validateEdition(
       throw new InvalidEditionError("Ohaasa lucky hint is required");
     }
 
-    if (edition.source === "gogo" && !isNonempty(fortune.luckyColor)) {
+    if (edition.source === "gogo" && fortune.luckyColor !== null && !isNonempty(fortune.luckyColor)) {
       throw new InvalidEditionError("Gogo lucky color is required");
     }
 
-    if (edition.source === "gogo" && !isNonempty(fortune.luckyKey)) {
+    if (edition.source === "gogo" && fortune.luckyKey !== null && !isNonempty(fortune.luckyKey)) {
       throw new InvalidEditionError("Gogo lucky key is required");
     }
 

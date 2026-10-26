@@ -39,17 +39,17 @@ export function FortunePanel({
             <dd>{fortune.luckyHint}</dd>
           </div>
         ) : null}
-        {source === "gogo" ? (
-          <>
-            <div>
-              <dt>Lucky color</dt>
-              <dd>{fortune.luckyColor}</dd>
-            </div>
-            <div>
-              <dt>Lucky key</dt>
-              <dd>{fortune.luckyKey}</dd>
-            </div>
-          </>
+        {source === "gogo" && fortune.luckyColor ? (
+          <div>
+            <dt>Lucky color</dt>
+            <dd>{fortune.luckyColor}</dd>
+          </div>
+        ) : null}
+        {source === "gogo" && fortune.luckyKey ? (
+          <div>
+            <dt>Lucky key</dt>
+            <dd>{fortune.luckyKey}</dd>
+          </div>
         ) : null}
       </dl>
       {source === "gogo" ? (
