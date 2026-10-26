@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { load } from "cheerio";
 
 import type {
   FortuneRepository,
@@ -163,9 +164,11 @@ export async function ingestSource(
   }
 
   let httpStatus: number | null = null;
+  let diagnosticHtml: string | null = null;
   try {
     const response = sourceResponse ?? await clients[source].fetch(targetDate);
     httpStatus = response.httpStatus;
+    if (source === "gogo" && typeof response.body === "string") diagnosticHtml = response.body;
     const edition =
       source === "ohaasa"
         ? parseOhaasa(response.body, targetDate)
@@ -209,7 +212,10 @@ export async function ingestSource(
         sourceDate: failure.sourceDate,
         errorCode: failure.code,
         ...(attempt === "manual" && error instanceof InvalidEditionError
-          ? { diagnostic: error.message }
+          ? { diagnostic: error.message + (diagnosticHtml === null ? "" : (() => {
+            const $ = load(diagnosticHtml);
+            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; rankingLinks=${$(".rank-box a[data-label]").length}; hasDateLabel=${/\d{1,2}月\d{1,2}日/.test(diagnosticHtml)}`;
+          })()) }
           : {}),
       },
       {

@@ -245,6 +245,17 @@ describe("ingestSource", () => {
     expect(JSON.stringify(test.repository.finishRun.mock.calls)).not.toContain(sourceProse);
   });
 
+  it("reports only structural HTML diagnostics on manual invalid Gogo runs", async () => {
+    const sourceProse = "Invented source prose";
+    const test = makeServiceInput({ source: "gogo", body: `<html><div class="rank-box">${sourceProse}</div></html>` });
+
+    const result = await ingestSource({ ...test.input, attempt: "manual" });
+
+    expect(result.status).toBe("invalid");
+    expect(result.diagnostic).toContain("titleAreas=0; rankingLinks=0; hasDateLabel=false");
+    expect(JSON.stringify(result)).not.toContain(sourceProse);
+  });
+
   it("normalizes every source fetch error before finalizing the run", async () => {
     const unsafeCode = "Invented upstream code and prose";
     const test = makeServiceInput();
