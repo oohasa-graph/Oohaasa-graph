@@ -125,24 +125,29 @@ gh workflow run export-data.yml --repo oohasa-graph/Oohaasa-graph \
 
 Files contain full editions and provenance at `editions/<source>/<year>/<date>.json`. Never print their contents, diffs, or error payloads to public logs. The writer reports counts only.
 
-### Deploy key setup and rotation
+### GitHub App setup and key rotation
 
-The workflow needs a write deploy key on the private repository and the matching `DATA_REPO_DEPLOY_KEY` Actions secret on the public repository. Use a private temporary directory. Never print either half of the key in public logs.
+Owner-approved change (2026-10-26): use a GitHub App instead of a deploy key. The organization's deploy-key policy remains disabled. Do not enable it for either repository or the organization.
 
-```bash
-scratch=$(mktemp -d)
-chmod 700 "$scratch"
-trap 'rm -f "$scratch/key" "$scratch/key.pub"; rmdir "$scratch"' EXIT
-ssh-keygen -q -t ed25519 -N "" -C oohaasa-graph-export -f "$scratch/key"
-gh repo deploy-key add "$scratch/key.pub" \
-  --repo oohasa-graph/Oohaasa-graph-data --allow-write \
-  --title "export from Oohaasa-graph"
-gh secret set DATA_REPO_DEPLOY_KEY --repo oohasa-graph/Oohaasa-graph < "$scratch/key"
-```
+1. Open `https://github.com/organizations/oohasa-graph/settings/apps/new`.
+2. Name the app `Oohaasa Graph Private Data Export`. Use `https://github.com/oohasa-graph/Oohaasa-graph` as its homepage. Disable webhooks; leave callback URLs and events empty.
+3. Grant Repository permissions: Contents **Read and write** and the automatic Metadata **Read-only** permission. Leave all other repository, organization and account permissions at **No access**.
+4. For installation availability, select **Only on this account**. Create the app.
+5. Install it on `oohasa-graph` using **Only select repositories**, choosing **Oohaasa-graph-data only**. Never choose All repositories or the public source repository.
+6. In the app's General settings, copy its **Client ID** and generate a private key. Keep the downloaded PEM file private; do not send it in chat or commit it.
+7. Under `oohasa-graph/Oohaasa-graph` → Settings → Secrets and variables → Actions, add repository secrets `DATA_APP_CLIENT_ID` (the Client ID) and `DATA_APP_PRIVATE_KEY` (the complete PEM file).
 
-After a successful export with the replacement key, list old keys with `gh repo deploy-key list --repo oohasa-graph/Oohaasa-graph-data` and remove the retired key by ID. Do not revoke the working key before its replacement is verified.
+The public repository's workflow requests a token for the explicit owner and private repository, with Contents write only. Tokens expire after one hour and are revoked when the job finishes. Every action is pinned to a full commit SHA.
 
-Setup checkpoint (2026-10-26): the private repository exists, but GitHub rejected key creation with `Deploy keys are disabled for this repository`. No key or Actions secret was installed. Get owner approval before changing repository or organization security policy.
+The export job accepts only scheduled or manually dispatched runs in the public source repository. Never add untrusted PR triggers or execute PR code with the app key. People able to change trusted workflows can use their secrets; review such changes accordingly.
+
+No app needs to run a server, subscribe to webhooks, or run Actions in the private repository. Do not enable paid services or new Vercel variables. If app installation requires a broader organization policy change, stop and ask the owner.
+
+Before rollout, verify the installation selects only `Oohaasa-graph-data`, grants only Contents write and Metadata read, and has no installation on the public repository. Verify the existing deploy-key policy is still disabled.
+
+To rotate the app key, generate a replacement in the app's General settings and update `DATA_APP_PRIVATE_KEY`. Verify a successful export before revoking the retired key. Never print key contents or tokens.
+
+Setup checkpoint: the private repository exists. App creation, installation and Actions secrets are pending owner setup. No deploy key was installed and no organization policy was changed.
 
 ## Wayback backfill
 

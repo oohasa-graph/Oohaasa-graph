@@ -12,10 +12,14 @@ describe("FortuneRepository", () => {
       const edition = makeParsedEdition({ source: "gogo", date: "2026-10-01" });
       await repository.saveEdition(edition, { ...metadata("a"), origin: "wayback", snapshotUrl });
       await repository.saveEdition(makeParsedEdition({ source: "ohaasa", date: "2026-10-05" }), metadata("b"));
-      const rows = await repository.listEditions("2026-10-01", "2026-10-03");
+      const rows = await repository.listEditions(
+        "2026-10-01", "2026-10-03",
+      );
       expect(rows).toHaveLength(1);
       expect(rows[0]).toEqual({ ...edition, fortunes: [...edition.fortunes].sort((a, b) => a.rank - b.rank), ...metadata("a"), fetchedAt: metadata("a").fetchedAt.toISOString(), origin: "wayback", snapshotUrl });
-      expect(await repository.listEditions("2020-01-01", "2020-01-02")).toEqual([]);
+      expect(await repository.listEditions(
+        "2020-01-01", "2020-01-02",
+      )).toEqual([]);
     } finally { await client.close(); }
   });
   it("stores edition origin and snapshot url", async () => {

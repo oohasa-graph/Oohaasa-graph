@@ -21,6 +21,10 @@ concurrency:
 
 jobs:
   export:
+    if: >-
+      github.repository == 'oohasa-graph/Oohaasa-graph' &&
+      (github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -32,11 +36,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Create token for the private data repository only
+        id: data-token
+        # Full commit SHA is required for this credential-bearing action.
+        # yamllint disable-line rule:line-length
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510
+        with:
+          client-id: ${{ secrets.DATA_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DATA_APP_PRIVATE_KEY }}
+          owner: oohasa-graph
+          repositories: Oohaasa-graph-data
+          permission-contents: write
       - name: Check out private data repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: oohasa-graph/Oohaasa-graph-data
-          ssh-key: ${{ secrets.DATA_REPO_DEPLOY_KEY }}
+          token: ${{ steps.data-token.outputs.token }}
           path: data-repo
       - name: Export bounded windows without printing bodies
         env:

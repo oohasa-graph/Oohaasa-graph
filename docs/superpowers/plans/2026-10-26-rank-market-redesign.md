@@ -5,7 +5,7 @@
 **Goal:** Replace the plain rank page with the approved Japanese-first kawaii market UI (main page + market board + language page), and give it real history by adding edition provenance, a Wayback Machine backfill, and a private GitHub mirror of every edition.
 
 **Architecture:**
-- **Data layer:** provenance columns are added through a migration that runs during the Vercel production build. Backfill is a new `backfill` attempt on the existing protected ingest endpoint, fed by a GitHub Actions runner script that reads Wayback snapshots. A read-only export endpoint, authenticated with the existing `INGEST_SECRET`, feeds a public-repo workflow that pushes JSON files to a private repo using a deploy key.
+- **Data layer:** provenance columns are added through a migration that runs during the Vercel production build. Backfill is a new `backfill` attempt on the existing protected ingest endpoint, fed by a GitHub Actions runner script that reads Wayback snapshots. A read-only export endpoint, authenticated with the existing `INGEST_SECRET`, feeds a public-repo workflow that pushes JSON files to a private repo using a private-repository-only GitHub App (owner-approved amendment below).
 - **UI:** a new `src/features/market/` feature replaces `src/features/rank-market/`. It has a rank-only history read model on an expected-morning axis, pure metrics, i18n messages, original SVG "mochi" characters, and three routes: `/`, `/board`, `/language`.
 
 **Tech Stack:** Next.js 16.3 (App Router), React 19, TypeScript, Drizzle ORM 0.45 with Neon serverless and PGlite for tests, Vitest 4, Playwright 1.62, `next/font/google`, GitHub Actions, `tsx`.
@@ -30,6 +30,17 @@
 - Characters are original. Never use show mascots or artwork.
 - Commit messages use conventional commits plus the repo's trailer convention (`Constraint:`, `Confidence:`, `Scope-risk:`, and so on), ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
+## Owner-approved Task 5 authentication amendment (2026-10-26)
+
+The organization disables deploy keys globally. The owner explicitly forbids enabling that policy for the public repository or organization, and approved the GitHub App alternative after an independent Claude consultation. These instructions supersede only the deploy-key portions of Task 5; all other requirements remain unchanged.
+
+- Register an organization-owned private app with Contents read/write and automatic Metadata read only. No webhooks, events, organization permissions or workflow permissions.
+- Install using **Only select repositories**, choosing `Oohaasa-graph-data` only. Do not install on the public repository.
+- Store `DATA_APP_CLIENT_ID` and `DATA_APP_PRIVATE_KEY` as Actions secrets in the public source repository. No Vercel variable or spending-limit change.
+- Use SHA-pinned `actions/create-github-app-token` with explicit `owner: oohasa-graph`, `repositories: Oohaasa-graph-data`, and `permission-contents: write`; checkout the private repository using this token. Keep automatic revocation enabled.
+- Restrict the export job to scheduled and manually dispatched runs in the source repository, never untrusted PR execution. Keep the public repository token read-only.
+- Owner offered to perform the browser-only app registration/installation. Exact setup steps are in `docs/operations.md`. Verify installation scope, permissions, both Actions secrets and unchanged organization deploy-key policy before completing Phase A.
+
 ## Review Focus
 
 1. **Bad or missing URL params** (`?sign=foo&range=10y&source=x`, or repeated params): render defaults (libra, ohaasa, 1m). Never crash or 500. *Pinned in Task 10, `parseMarketParams` tests.*
@@ -45,10 +56,10 @@
 - Native implementation in Orca worktree branch `insung3511/eagleray`, based on `f576dd8`. The approved branch is checked out in the parent worktree, so it was not switched or modified. No phase push yet.
 - Tasks 1–4 are complete, each committed after RED/GREEN tests: `0cfe1cb`, `ab03219`, `584a3a9`, `c7dd621`.
 - Task 5 code, workflow, tests and operations documentation are implemented. The private repository exists and its visibility is verified `PRIVATE`.
-- **Task 5 is blocked:** GitHub returned HTTP 422, `Deploy keys are disabled for this repository`. No deploy key or `DATA_REPO_DEPLOY_KEY` secret was installed. The temporary key pair was deleted. Owner approval is required before changing repository or organization security policy.
-- Latest local checks: lint, typecheck and all **119 tests / 22 files pass**. Build exits successfully and skips local migrations, but Turbopack reports a cache persistence warning (`No space left on device`); the host has about 134 MiB free. No unrelated files were deleted.
+- **Task 5 setup pending:** owner approved the GitHub App alternative without changing public/organization policy and offered to perform browser registration/installation. No app, deploy key or app Actions secret has been installed by the agent. Temporary deploy-key files were deleted. The local setup helper never completed registration.
+- Latest checks: lint, typecheck, all **121 tests / 23 files**, and production build pass without the previous disk warning. Active LSP checks are clean. The app workflow has two regression tests covering explicit private-repository token scope, trusted triggers and pinned actions. The host now has about 11 GiB free; no unrelated files were deleted by the agent.
 - Tasks 6–14 have not started. No reviewer has been dispatched, no production migration has run, and no live backfill/export has been dispatched.
-- Resume at Task 5 Step 5: resolve the deploy-key policy with approval, generate a new temporary key, install the key and Actions secret, verify both, then complete Phase A and push `HEAD:feature/fortune-graph-app` without force. Continue Tasks 6–13 natively, dispatch one fresh reviewer, then perform Task 14.
+- Resume at Task 5 Step 5 using the authentication amendment: verify the owner's private-only app installation and `DATA_APP_CLIENT_ID` / `DATA_APP_PRIVATE_KEY` Actions secrets. Do not change deploy-key policies. Complete Phase A and push `HEAD:feature/fortune-graph-app` without force. Continue Tasks 6–13 natively, dispatch one fresh whole-branch reviewer, then perform Task 14.
 
 ## File Map
 
