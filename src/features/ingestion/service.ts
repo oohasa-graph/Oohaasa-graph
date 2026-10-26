@@ -223,7 +223,8 @@ export async function ingestSource(
             const boxes = details.find(".lucky-box").toArray().map((box) =>
               `${classes(box)}[${$(box).children().toArray().map(classes).join(",")}]`,
             );
-            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; luckyBoxes=${boxes.join("|")}; colors=${details.find(".color-txt").length}; keys=${details.find(".key-txt").length}; reads=${details.find(".read").length}`;
+            const winners = [...new Set($(".number-one-area").toArray().map(classes))];
+            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; luckyBoxes=${boxes.join("|")}; colors=${details.find(".color-txt").length}; keys=${details.find(".key-txt").length}; reads=${details.find(".read").length}; winners=${winners.join("|")}`;
           })()) }
           : {}),
       },
