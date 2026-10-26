@@ -15,17 +15,19 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-import { SOURCES, type WinnerCategory } from "@/features/fortune/domain";
+import { EDITION_ORIGINS, SOURCES, type WinnerCategory } from "@/features/fortune/domain";
 
 export const INGESTION_ERROR_SUMMARY_MAX_LENGTH = 120;
 
 export const sourceEnum = pgEnum("source", SOURCES);
+export const editionOriginEnum = pgEnum("edition_origin", EDITION_ORIGINS);
 export const ingestionAttemptEnum = pgEnum("ingestion_attempt", [
   "primary",
   "retry_1",
   "retry_2",
   "final",
   "manual",
+  "backfill",
 ]);
 export const ingestionStatusEnum = pgEnum("ingestion_status", [
   "success",
@@ -44,6 +46,8 @@ export const editions = pgTable(
     editionDate: date("edition_date").notNull(),
     sourceDateLabel: text("source_date_label").notNull(),
     attribution: text("attribution"),
+    origin: editionOriginEnum("origin").notNull().default("live"),
+    snapshotUrl: text("snapshot_url"),
     contentHash: text("content_hash").notNull(),
     parserVersion: integer("parser_version").notNull(),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),

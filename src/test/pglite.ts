@@ -10,5 +10,5 @@ export async function createTestRepository() {
   const db = drizzle(client, { schema });
   await migrate(db, { migrationsFolder: "drizzle" });
 
-  return { client, repository: createFortuneRepository(db) };
+  return { client, db, repository: createFortuneRepository(db) };
 }

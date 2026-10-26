@@ -1,9 +1,41 @@
 import { describe, expect, it } from "vitest";
 
+import { editions } from "@/db/schema";
 import { makeParsedEdition, metadata } from "@/test/factories";
 import { createTestRepository } from "@/test/pglite";
 
 describe("FortuneRepository", () => {
+  it("stores edition origin and snapshot url", async () => {
+    const { client, db, repository } = await createTestRepository();
+    const snapshotUrl = "https://web.archive.org/web/20261001000000id_/https://www.tv-asahi.co.jp/goodmorning/uranai/";
+    try {
+      await repository.saveEdition(makeParsedEdition({ source: "gogo", date: "2026-10-01" }), {
+        ...metadata("a"), origin: "wayback", snapshotUrl,
+      });
+      const [row] = await db.select().from(editions);
+      expect(row).toMatchObject({ origin: "wayback", snapshotUrl });
+    } finally { await client.close(); }
+  });
+
+  it("insertEditionIfAbsent never replaces an existing edition", async () => {
+    const { client, repository } = await createTestRepository();
+    try {
+      await repository.saveEdition(makeParsedEdition({ source: "gogo", date: "2026-10-01", libraRank: 3 }), metadata("a"));
+      expect(await repository.insertEditionIfAbsent(makeParsedEdition({ source: "gogo", date: "2026-10-01", libraRank: 9 }), {
+        ...metadata("b"), origin: "wayback", snapshotUrl: "https://web.archive.org/web/20261001000000id_/https://www.tv-asahi.co.jp/goodmorning/uranai/",
+      })).toBe(false);
+      expect(await repository.getRank("gogo", "2026-10-01", "libra")).toBe(3);
+    } finally { await client.close(); }
+  });
+
+  it("insertEditionIfAbsent inserts a missing edition", async () => {
+    const { client, repository } = await createTestRepository();
+    try {
+      expect(await repository.insertEditionIfAbsent(makeParsedEdition({ source: "gogo", date: "2026-10-01" }), metadata("a"))).toBe(true);
+      expect(await repository.countEntries("gogo", "2026-10-01")).toBe(12);
+    } finally { await client.close(); }
+  });
+
   it("saves one edition and exactly twelve entries atomically", async () => {
     const { client, repository } = await createTestRepository();
 

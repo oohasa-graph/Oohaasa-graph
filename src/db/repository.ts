@@ -9,6 +9,7 @@ import {
 } from "@/db/schema";
 import * as schema from "@/db/schema";
 import type {
+  EditionOrigin,
   IngestionAttempt,
   IngestionStatus,
   ParsedEdition,
@@ -17,6 +18,8 @@ import type {
 } from "@/features/fortune/domain";
 
 export type PersistEditionInput = {
+  origin: EditionOrigin;
+  snapshotUrl: string | null;
   contentHash: string;
   parserVersion: number;
   fetchedAt: Date;
@@ -54,6 +57,7 @@ export interface FortuneRepository {
     edition: ParsedEdition,
     metadata: PersistEditionMetadata,
   ): Promise<void>;
+  insertEditionIfAbsent(edition: ParsedEdition, metadata: PersistEditionMetadata): Promise<boolean>;
   startRun(input: StartRunInput): Promise<string>;
   finishRun(runId: string, result: RunResult): Promise<void>;
   countEntries(source: Source, date: string): Promise<number>;
@@ -69,6 +73,47 @@ export function createFortuneRepository<
 >(
   db: PgDatabase<TQueryResult, typeof schema>,
 ): FortuneRepository {
+  async function persist(edition: ParsedEdition, metadata: PersistEditionMetadata, onlyIfAbsent: boolean): Promise<boolean> {
+    if (edition.fortunes.length !== 12) {
+      throw new Error("An edition must contain exactly 12 fortune entries");
+    }
+    return db.transaction(async (transaction) => {
+      const values = {
+        source: edition.source,
+        editionDate: edition.editionDate,
+        sourceDateLabel: edition.sourceDateLabel,
+        attribution: edition.attribution,
+        ...metadata,
+      };
+      const insert = transaction.insert(editions).values(values);
+      const target = [editions.source, editions.editionDate];
+      const [stored] = await (onlyIfAbsent
+        ? insert.onConflictDoNothing({ target })
+        : insert.onConflictDoUpdate({ target, set: { ...values, updatedAt: new Date() } })
+      ).returning({ id: editions.id });
+      if (!stored) return false;
+      if (!onlyIfAbsent) {
+        await transaction.delete(fortuneEntries).where(eq(fortuneEntries.editionId, stored.id));
+      }
+      await transaction.insert(fortuneEntries).values(edition.fortunes.map((fortune) => ({
+        editionId: stored.id,
+        zodiacCode: fortune.zodiacCode,
+        rank: fortune.rank,
+        comment: fortune.comment,
+        adviceLines: fortune.adviceLines,
+        luckyHint: fortune.luckyHint,
+        luckyColor: fortune.luckyColor,
+        luckyKey: fortune.luckyKey,
+        moneyScore: fortune.scores.money,
+        loveScore: fortune.scores.love,
+        workScore: fortune.scores.work,
+        healthScore: fortune.scores.health,
+        winnerCategories: fortune.winnerCategories,
+      })));
+      return true;
+    });
+  }
+
   return {
     async hasEdition(source, date) {
       const rows = await db
@@ -83,61 +128,11 @@ export function createFortuneRepository<
     },
 
     async saveEdition(edition, metadata) {
-      if (edition.fortunes.length !== 12) {
-        throw new Error("An edition must contain exactly 12 fortune entries");
-      }
+      await persist(edition, metadata, false);
+    },
 
-      await db.transaction(async (transaction) => {
-        const [storedEdition] = await transaction
-          .insert(editions)
-          .values({
-            source: edition.source,
-            editionDate: edition.editionDate,
-            sourceDateLabel: edition.sourceDateLabel,
-            attribution: edition.attribution,
-            contentHash: metadata.contentHash,
-            parserVersion: metadata.parserVersion,
-            fetchedAt: metadata.fetchedAt,
-          })
-          .onConflictDoUpdate({
-            target: [editions.source, editions.editionDate],
-            set: {
-              sourceDateLabel: edition.sourceDateLabel,
-              attribution: edition.attribution,
-              contentHash: metadata.contentHash,
-              parserVersion: metadata.parserVersion,
-              fetchedAt: metadata.fetchedAt,
-              updatedAt: new Date(),
-            },
-          })
-          .returning({ id: editions.id });
-
-        if (!storedEdition) {
-          throw new Error("Edition upsert did not return an id");
-        }
-
-        await transaction
-          .delete(fortuneEntries)
-          .where(eq(fortuneEntries.editionId, storedEdition.id));
-
-        await transaction.insert(fortuneEntries).values(
-          edition.fortunes.map((fortune) => ({
-            editionId: storedEdition.id,
-            zodiacCode: fortune.zodiacCode,
-            rank: fortune.rank,
-            comment: fortune.comment,
-            adviceLines: fortune.adviceLines,
-            luckyHint: fortune.luckyHint,
-            luckyColor: fortune.luckyColor,
-            luckyKey: fortune.luckyKey,
-            moneyScore: fortune.scores.money,
-            loveScore: fortune.scores.love,
-            workScore: fortune.scores.work,
-            healthScore: fortune.scores.health,
-            winnerCategories: fortune.winnerCategories,
-          })),
-        );
-      });
+    insertEditionIfAbsent(edition, metadata) {
+      return persist(edition, metadata, true);
     },
 
     async startRun(input) {

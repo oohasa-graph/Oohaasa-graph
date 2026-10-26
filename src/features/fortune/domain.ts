@@ -30,7 +30,10 @@ export type ParsedEdition = {
   fortunes: ParsedFortune[];
 };
 
-export type IngestionAttempt = "primary" | "retry_1" | "retry_2" | "final" | "manual";
+export const EDITION_ORIGINS = ["live", "wayback"] as const;
+export type EditionOrigin = (typeof EDITION_ORIGINS)[number];
+
+export type IngestionAttempt = "primary" | "retry_1" | "retry_2" | "final" | "manual" | "backfill";
 export type IngestionStatus =
   | "success" | "already_complete" | "not_expected"
   | "stale" | "invalid" | "fetch_error";

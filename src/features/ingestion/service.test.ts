@@ -30,6 +30,7 @@ function makeServiceInput(
   const repository = {
     hasEdition: vi.fn().mockResolvedValue(options.hasEdition ?? false),
     saveEdition: vi.fn().mockResolvedValue(undefined),
+    insertEditionIfAbsent: vi.fn().mockResolvedValue(true),
     startRun: vi.fn().mockResolvedValue("run-1"),
     finishRun: vi.fn().mockResolvedValue(undefined),
     countEntries: vi.fn().mockResolvedValue(0),

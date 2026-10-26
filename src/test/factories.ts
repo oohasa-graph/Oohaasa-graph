@@ -40,6 +40,8 @@ export function makeParsedEdition(input: {
 
 export function metadata(seed: string): PersistEditionMetadata {
   return {
+    origin: "live",
+    snapshotUrl: null,
     contentHash: `hash-${seed}`,
     parserVersion: 1,
     fetchedAt: new Date("2026-08-25T20:15:00Z"),

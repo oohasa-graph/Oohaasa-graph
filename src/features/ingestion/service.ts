@@ -181,6 +181,8 @@ export async function ingestSource(
       .digest("hex");
     await repository.saveEdition(edition, {
       contentHash,
+      origin: "live",
+      snapshotUrl: null,
       parserVersion: 1,
       fetchedAt: now(),
     });
