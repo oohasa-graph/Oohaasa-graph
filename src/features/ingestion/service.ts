@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { load } from "cheerio";
+import type { AnyNode } from "domhandler";
 
 import type {
   FortuneRepository,
@@ -224,7 +225,26 @@ export async function ingestSource(
               `${classes(box)}[${$(box).children().toArray().map(classes).join(",")}]`,
             );
             const winners = [...new Set($(".number-one-area").toArray().map(classes))];
-            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; luckyBoxes=${boxes.join("|")}; colors=${details.find(".color-txt").length}; keys=${details.find(".key-txt").length}; reads=${details.find(".read").length}; winners=${winners.join("|")}`;
+            // Public CI logs: emit tags, classes, image basenames, and text lengths only.
+            const skeleton = (node: AnyNode, depth: number): string => {
+              if (node.type === "text") {
+                const length = $(node).text().trim().length;
+                return length === 0 ? "" : `~${length}`;
+              }
+              if (node.type !== "tag") return "";
+              const id = ($(node).attr("id") ?? "").replace(/[^a-zA-Z0-9_-]/g, "");
+              const source = ($(node).attr("src") ?? "").split(/[?#]/)[0].split("/").pop()
+                ?.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
+              const data = Object.keys(node.attribs).filter((name) => name.startsWith("data-"));
+              const head = `${node.name}${id ? `#${id}` : ""}${classes(node) ? `.${classes(node).trim().split(/\s+/).join(".")}` : ""}${source ? `@${source}` : ""}${data.length ? `{${data.join(",")}}` : ""}`;
+              const children = depth >= 6 ? [] : $(node).contents().toArray().slice(0, 16)
+                .map((child) => skeleton(child, depth + 1)).filter(Boolean);
+              return children.length ? `${head}(${children.join(" ")})` : head;
+            };
+            const winnerContexts = [...new Set($(".number-one-area").toArray().map((marker) =>
+              `${($(marker).closest("[id]").attr("id") ?? "none").replace(/[^a-zA-Z0-9_-]/g, "")}>${skeleton(marker, 0)}`,
+            ))].slice(0, 12);
+            return `; htmlLength=${diagnosticHtml.length}; titleAreas=${$(".ttl-area").length}; titleDates=${dates.join("|")}; rankingLinks=${$(".rank-box a[data-label]").length}; luckyBoxes=${boxes.join("|")}; colors=${details.find(".color-txt").length}; keys=${details.find(".key-txt").length}; reads=${details.find(".read").length}; winners=${winners.join("|")}; winnerContexts=${winnerContexts.join("|")}; detail=${details.length === 1 ? skeleton(details.get(0)!, 0) : "none"}`;
           })()) }
           : {}),
       },

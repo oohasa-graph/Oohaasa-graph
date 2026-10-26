@@ -256,6 +256,22 @@ describe("ingestSource", () => {
     expect(JSON.stringify(result)).not.toContain(sourceProse);
   });
 
+  it("reports a text-free skeleton of Gogo sign details and winner markers", async () => {
+    const sourceProse = "Invented source prose";
+    const test = makeServiceInput({
+      source: "gogo",
+      body: `<html><section id="ohitsuji"><p class="read">${sourceProse}</p><div class="number-one-area"><img src="/x/icon-love.png?v=1" alt="${sourceProse}" data-kind="${sourceProse}">${sourceProse}</div></section></html>`,
+    });
+
+    const result = await ingestSource({ ...test.input, attempt: "manual" });
+
+    expect(result.diagnostic).toContain(
+      "winnerContexts=ohitsuji>div.number-one-area(img@icon-love.png{data-kind} ~21)",
+    );
+    expect(result.diagnostic).toContain("detail=section#ohitsuji(p.read(~21) div.number-one-area(");
+    expect(JSON.stringify(result)).not.toContain(sourceProse);
+  });
+
   it("normalizes every source fetch error before finalizing the run", async () => {
     const unsafeCode = "Invented upstream code and prose";
     const test = makeServiceInput();
