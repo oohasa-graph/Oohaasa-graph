@@ -5,6 +5,19 @@ import { makeParsedEdition, metadata } from "@/test/factories";
 import { createTestRepository } from "@/test/pglite";
 
 describe("FortuneRepository", () => {
+  it("exports bounded editions with all fields, provenance and rank ordering", async () => {
+    const { client, repository } = await createTestRepository();
+    try {
+      const snapshotUrl = "https://web.archive.org/web/20261001000000id_/https://www.tv-asahi.co.jp/goodmorning/uranai/";
+      const edition = makeParsedEdition({ source: "gogo", date: "2026-10-01" });
+      await repository.saveEdition(edition, { ...metadata("a"), origin: "wayback", snapshotUrl });
+      await repository.saveEdition(makeParsedEdition({ source: "ohaasa", date: "2026-10-05" }), metadata("b"));
+      const rows = await repository.listEditions("2026-10-01", "2026-10-03");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toEqual({ ...edition, fortunes: [...edition.fortunes].sort((a, b) => a.rank - b.rank), ...metadata("a"), fetchedAt: metadata("a").fetchedAt.toISOString(), origin: "wayback", snapshotUrl });
+      expect(await repository.listEditions("2020-01-01", "2020-01-02")).toEqual([]);
+    } finally { await client.close(); }
+  });
   it("stores edition origin and snapshot url", async () => {
     const { client, db, repository } = await createTestRepository();
     const snapshotUrl = "https://web.archive.org/web/20261001000000id_/https://www.tv-asahi.co.jp/goodmorning/uranai/";

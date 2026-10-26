@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import {
@@ -8,11 +8,13 @@ import {
   ingestionRuns,
 } from "@/db/schema";
 import * as schema from "@/db/schema";
+import { ZODIAC_CODES as schemaZodiacCodes } from "@/features/fortune/domain";
 import type {
   EditionOrigin,
   IngestionAttempt,
   IngestionStatus,
   ParsedEdition,
+  ParsedFortune,
   Source,
   ZodiacCode,
 } from "@/features/fortune/domain";
@@ -26,6 +28,29 @@ export type PersistEditionInput = {
 };
 
 export type PersistEditionMetadata = PersistEditionInput;
+
+export type ExportedEdition = ParsedEdition & {
+  origin: EditionOrigin;
+  snapshotUrl: string | null;
+  fetchedAt: string;
+  parserVersion: number;
+  contentHash: string;
+};
+
+export function toParsedFortune(row: typeof fortuneEntries.$inferSelect): ParsedFortune {
+  if (!schemaZodiacCodes.includes(row.zodiacCode as ZodiacCode)) throw new Error("Stored zodiac code is invalid");
+  return {
+    zodiacCode: row.zodiacCode as ZodiacCode,
+    rank: row.rank,
+    comment: row.comment,
+    adviceLines: row.adviceLines,
+    luckyHint: row.luckyHint,
+    luckyColor: row.luckyColor,
+    luckyKey: row.luckyKey,
+    scores: { money: row.moneyScore, love: row.loveScore, work: row.workScore, health: row.healthScore },
+    winnerCategories: row.winnerCategories,
+  };
+}
 
 export type StartRunInput = {
   source: Source;
@@ -52,6 +77,7 @@ export type RunResult = {
 };
 
 export interface FortuneRepository {
+  listEditions(from: string, to: string): Promise<ExportedEdition[]>;
   hasEdition(source: Source, date: string): Promise<boolean>;
   saveEdition(
     edition: ParsedEdition,
@@ -115,6 +141,34 @@ export function createFortuneRepository<
   }
 
   return {
+    async listEditions(from, to) {
+      const stored = await db.select().from(editions)
+        .where(and(gte(editions.editionDate, from), lte(editions.editionDate, to)))
+        .orderBy(asc(editions.source), asc(editions.editionDate));
+      if (!stored.length) return [];
+      const entries = await db.select().from(fortuneEntries)
+        .where(inArray(fortuneEntries.editionId, stored.map((edition) => edition.id)))
+        .orderBy(asc(fortuneEntries.rank));
+      const byEdition = new Map<string, ParsedFortune[]>();
+      for (const entry of entries) {
+        const list = byEdition.get(entry.editionId) ?? [];
+        list.push(toParsedFortune(entry));
+        byEdition.set(entry.editionId, list);
+      }
+      return stored.map((edition) => ({
+        source: edition.source,
+        editionDate: edition.editionDate,
+        sourceDateLabel: edition.sourceDateLabel,
+        attribution: edition.attribution,
+        origin: edition.origin,
+        snapshotUrl: edition.snapshotUrl,
+        fetchedAt: edition.fetchedAt.toISOString(),
+        parserVersion: edition.parserVersion,
+        contentHash: edition.contentHash,
+        fortunes: byEdition.get(edition.id) ?? [],
+      }));
+    },
+
     async hasEdition(source, date) {
       const rows = await db
         .select({ id: editions.id })

@@ -28,6 +28,7 @@ function makeServiceInput(
   const source = options.source ?? "gogo";
   const targetDate = options.targetDate ?? "2026-08-26";
   const repository = {
+    listEditions: vi.fn().mockResolvedValue([]),
     hasEdition: vi.fn().mockResolvedValue(options.hasEdition ?? false),
     saveEdition: vi.fn().mockResolvedValue(undefined),
     insertEditionIfAbsent: vi.fn().mockResolvedValue(true),
