@@ -64,6 +64,29 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("Wayback ingestion", () => {
+  const snapshotUrl = "https://web.archive.org/web/20260826000000id_/https://www.tv-asahi.co.jp/goodmorning/uranai/";
+  it("backfill inserts a wayback edition", async () => {
+    const test = makeServiceInput();
+    const result = await ingestSource({ ...test.input, attempt: "backfill", snapshotUrl, sourceResponse: { body: gogoHtml, httpStatus: 200 } });
+    expect(result.status).toBe("success");
+    expect(test.repository.insertEditionIfAbsent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ origin: "wayback", snapshotUrl }));
+    expect(test.repository.saveEdition).not.toHaveBeenCalled();
+    expect(test.selectedFetch).not.toHaveBeenCalled();
+  });
+  it("backfill never replaces an edition, even with force", async () => {
+    const test = makeServiceInput({ hasEdition: true, force: true });
+    expect((await ingestSource({ ...test.input, attempt: "backfill", snapshotUrl })).status).toBe("already_complete");
+    expect(test.repository.insertEditionIfAbsent).not.toHaveBeenCalled();
+    expect(test.repository.saveEdition).not.toHaveBeenCalled();
+  });
+  it("backfill reports already_complete when the insert races", async () => {
+    const test = makeServiceInput();
+    test.repository.insertEditionIfAbsent.mockResolvedValue(false);
+    expect((await ingestSource({ ...test.input, attempt: "backfill", snapshotUrl, sourceResponse: { body: gogoHtml, httpStatus: 200 } })).status).toBe("already_complete");
+  });
+});
+
 describe("bounded HTTP helpers", () => {
   it("fetches text with a ten-second timeout, no-store cache, and identifying user agent", async () => {
     const response = new Response("invented response", { status: 200 });

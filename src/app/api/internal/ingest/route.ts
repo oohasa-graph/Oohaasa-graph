@@ -4,6 +4,8 @@ import { z } from "zod";
 import { getDb } from "@/db/client";
 import { createFortuneRepository } from "@/db/repository";
 import { SOURCES, type Source } from "@/features/fortune/domain";
+import { SOURCE_URLS } from "@/features/fortune/source-urls";
+import { deriveEditionDate, parseSnapshotUrl } from "@/features/backfill/snapshot";
 import { fetchJson, fetchText } from "@/features/ingestion/http";
 import { isAuthorized } from "@/features/ingestion/request-auth";
 import {
@@ -17,21 +19,22 @@ import { getIngestionEnv } from "@/lib/env";
 
 export const runtime = "nodejs";
 
-const OHAASA_URL = "https://www.asahi.co.jp/data/ohaasa2020/horoscope.json";
-const GOGO_URL = "https://www.tv-asahi.co.jp/goodmorning/uranai/";
-
 const bodySchema = z.object({
-  attempt: z.enum(["primary", "retry_1", "retry_2", "final", "manual"]),
+  attempt: z.enum(["primary", "retry_1", "retry_2", "final", "manual", "backfill"]),
   source: z.enum(["all", ...SOURCES]),
   force: z.boolean(),
   sourceBody: z.union([z.string().min(1), z.array(z.unknown())]).optional(),
+  snapshotUrl: z.string().max(2048).optional(),
 }).refine((body) => body.sourceBody === undefined ||
-  (body.source !== "all" && (body.source === "gogo") === (typeof body.sourceBody === "string")));
+  (body.source !== "all" && (body.source === "gogo") === (typeof body.sourceBody === "string")))
+  .refine((body) => body.attempt === "backfill"
+    ? body.source !== "all" && body.snapshotUrl !== undefined && body.sourceBody !== undefined
+    : body.snapshotUrl === undefined);
 
 type RequestBody = z.infer<typeof bodySchema>;
 type HandlerIngestInput = Pick<
   IngestSourceInput,
-  "source" | "targetDate" | "attempt" | "force" | "sourceResponse"
+  "source" | "targetDate" | "attempt" | "force" | "sourceResponse" | "snapshotUrl"
 >;
 type HandlerIngest = (input: HandlerIngestInput) => Promise<IngestionResult>;
 
@@ -60,10 +63,10 @@ async function parseBody(request: Request): Promise<RequestBody | null> {
 export function createSourceClients(userAgent: string): SourceClients {
   return {
     ohaasa: {
-      fetch: () => fetchJson(OHAASA_URL, userAgent),
+      fetch: () => fetchJson(SOURCE_URLS.ohaasa, userAgent),
     },
     gogo: {
-      fetch: () => fetchText(GOGO_URL, userAgent),
+      fetch: () => fetchText(SOURCE_URLS.gogo, userAgent),
     },
   };
 }
@@ -79,7 +82,14 @@ export function createPostHandler(dependencies: HandlerDependencies) {
       return NextResponse.json({ error: "invalid_request" }, { status: 400 });
     }
 
-    const targetDate = getJstDate(dependencies.now());
+    let targetDate = getJstDate(dependencies.now());
+    if (body.attempt === "backfill" && body.source !== "all") {
+      const snapshot = parseSnapshotUrl(body.snapshotUrl ?? "");
+      if (!snapshot || snapshot.originalUrl !== SOURCE_URLS[body.source]) {
+        return NextResponse.json({ error: "invalid_snapshot" }, { status: 400 });
+      }
+      targetDate = deriveEditionDate(body.source, body.sourceBody, snapshot.capturedJstDate) ?? snapshot.capturedJstDate;
+    }
     const results = await Promise.all(
       selectedSources(body.source).map((source) =>
         dependencies.ingest({
@@ -87,6 +97,7 @@ export function createPostHandler(dependencies: HandlerDependencies) {
           targetDate,
           attempt: body.attempt,
           force: body.force,
+          ...(body.snapshotUrl === undefined ? {} : { snapshotUrl: body.snapshotUrl }),
           ...(body.sourceBody === undefined ? {} : {
             sourceResponse: { body: body.sourceBody, httpStatus: 200 },
           }),

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IngestionAttempt, IngestionStatus, Source } from "@/features/fortune/domain";
@@ -10,6 +11,7 @@ function makeRequest(body: {
   source: Source | "all";
   force: boolean;
   sourceBody?: unknown;
+  snapshotUrl?: string;
 }, secret = "correct-secret") {
   return new Request("http://test/api/internal/ingest", {
     method: "POST",
@@ -33,6 +35,31 @@ function result(source: Source, status: IngestionStatus) {
 }
 
 describe("POST /api/internal/ingest", () => {
+  const snapshotUrl = "https://web.archive.org/web/20261025210000id_/https://www.tv-asahi.co.jp/goodmorning/uranai/";
+  const backfill = { attempt: "backfill" as const, source: "gogo" as const, force: false, snapshotUrl, sourceBody: readFileSync("src/test/fixtures/gogo-current.html", "utf8") };
+  it("derives the backfill edition date from content", async () => {
+    const ingest = vi.fn().mockResolvedValue(result("gogo", "success"));
+    const handler = createPostHandler({ ingest, now: fixedNow, secret: "correct-secret" });
+    expect((await handler(makeRequest(backfill))).status).toBe(200);
+    expect(ingest).toHaveBeenCalledWith(expect.objectContaining({ attempt: "backfill", targetDate: "2026-10-26", snapshotUrl }));
+  });
+  it("rejects missing, mismatched, or non-backfill provenance", async () => {
+    const ingest = vi.fn();
+    const handler = createPostHandler({ ingest, now: fixedNow, secret: "correct-secret" });
+    for (const body of [
+      { ...backfill, snapshotUrl: undefined }, { ...backfill, sourceBody: undefined },
+      { ...backfill, source: "all" as const },
+      { ...backfill, snapshotUrl: snapshotUrl.replace("https://www.tv-asahi.co.jp/goodmorning/uranai/", "https://www.asahi.co.jp/data/ohaasa2020/horoscope.json") },
+      { ...backfill, attempt: "manual" as const }, { ...backfill, snapshotUrl: "https://evil.example/archive" },
+    ]) expect((await handler(makeRequest(body))).status).toBe(400);
+    expect(ingest).not.toHaveBeenCalled();
+  });
+  it("records unparseable snapshots using the capture date without 424", async () => {
+    const ingest = vi.fn().mockResolvedValue(result("gogo", "invalid"));
+    const handler = createPostHandler({ ingest, now: fixedNow, secret: "correct-secret" });
+    expect((await handler(makeRequest({ ...backfill, sourceBody: "<html></html>" }))).status).toBe(200);
+    expect(ingest).toHaveBeenCalledWith(expect.objectContaining({ targetDate: "2026-10-26", snapshotUrl }));
+  });
   it("rejects missing or incorrect bearer secrets", async () => {
     const ingest = vi.fn();
     const handler = createPostHandler({ ingest, now: fixedNow, secret: "correct-secret" });

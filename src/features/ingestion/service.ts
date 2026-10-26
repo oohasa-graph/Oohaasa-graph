@@ -37,6 +37,7 @@ export type IngestSourceInput = {
   repository: FortuneRepository;
   clients: SourceClients;
   sourceResponse?: SourceResponse;
+  snapshotUrl?: string;
   now: () => Date;
 };
 
@@ -145,7 +146,7 @@ export async function ingestSource(
     );
   }
 
-  if (!force && (await repository.hasEdition(source, targetDate))) {
+  if ((attempt === "backfill" || !force) && (await repository.hasEdition(source, targetDate))) {
     return finishAndReturn(
       repository,
       runId,
@@ -167,6 +168,9 @@ export async function ingestSource(
   let httpStatus: number | null = null;
   let diagnosticHtml: string | null = null;
   try {
+    if (attempt === "backfill" && (!sourceResponse || !input.snapshotUrl)) {
+      throw new InvalidEditionError("Backfill requires snapshot content and provenance");
+    }
     const response = sourceResponse ?? await clients[source].fetch(targetDate);
     httpStatus = response.httpStatus;
     if (source === "gogo" && typeof response.body === "string") diagnosticHtml = response.body;
@@ -179,13 +183,19 @@ export async function ingestSource(
     const contentHash = createHash("sha256")
       .update(stableEditionJson(edition))
       .digest("hex");
-    await repository.saveEdition(edition, {
+    const metadata = {
       contentHash,
-      origin: "live",
-      snapshotUrl: null,
+      origin: attempt === "backfill" ? "wayback" as const : "live" as const,
+      snapshotUrl: attempt === "backfill" ? input.snapshotUrl! : null,
       parserVersion: 1,
       fetchedAt: now(),
-    });
+    };
+    let status: IngestionStatus = "success";
+    if (attempt === "backfill") {
+      if (!await repository.insertEditionIfAbsent(edition, metadata)) status = "already_complete";
+    } else {
+      await repository.saveEdition(edition, metadata);
+    }
 
     return finishAndReturn(
       repository,
@@ -193,7 +203,7 @@ export async function ingestSource(
       {
         source,
         targetDate,
-        status: "success",
+        status,
         sourceDate: edition.editionDate,
         errorCode: null,
       },
