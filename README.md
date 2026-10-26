@@ -1,6 +1,6 @@
 # Oohaasa / Gogo Fortune Rank Market
 
-Owner-approved public-viewing prototype for daily zodiac ranking history from Ohaasa and Gogo. The app stores each source independently and presents ranks in a dark market-style interface without combined ranks, odds, betting, probabilities, broadcaster images, or logos.
+Owner-approved public-viewing prototype for daily zodiac ranking history from Ohaasa and Gogo. The app stores each source independently and presents ranks as a Japanese-first, kawaii "stock market" (original mochi characters, no combined ranks, odds, betting, probabilities, broadcaster images, or logos).
 
 Internal ingestion remains protected by a bearer secret. Re-check content rights before broader promotion or commercial launch.
 
@@ -27,7 +27,7 @@ Run locally:
 npm run dev
 ```
 
-The public app is served at `/`.
+The public app is served at `/` (main market view). `/board` is the market board opened from the rank chart, and `/language` switches the interface between Japanese (default on first visit), English, and Korean. The choice is stored in the `rm-lang` cookie; fortune text from the shows is never translated. Views share `?sign=&source=&range=` query parameters; unknown or repeated values fall back to libra, Ohaasa, and one month.
 
 ## Verification
 
@@ -39,7 +39,7 @@ npm run build
 npm run test:e2e
 ```
 
-Playwright uses `DATA_FIXTURE_MODE=1` through `playwright.config.ts` and never fetches live source content.
+Playwright uses `DATA_FIXTURE_MODE=1` through `playwright.config.ts` and never fetches live source content. `tests/market.spec.ts` runs on desktop and a 390 px phone project; it also checks that the language page's return target can only lead back to this site.
 
 ## Database
 

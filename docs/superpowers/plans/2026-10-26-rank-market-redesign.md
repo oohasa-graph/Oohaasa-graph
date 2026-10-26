@@ -61,6 +61,23 @@ The organization disables deploy keys globally. The owner explicitly forbids ena
 - Task 6 is complete: expected-morning axes, rank-only archive queries, latest full entries, production-protected invented fixtures. RED/GREEN tests include holidays, gaps, empty sources, future exclusion and earliest archive expansion. Task 7 is complete: null-safe ranges/statistics, adjacent-morning movers, gap-breaking streaks, weekly awards, moods and stamp colors; all six metric tests passed after RED. Tasks 8–14 have not started. The Phase A production build succeeded; live backfill/export and whole-branch review remain pending.
 - Next: verify and push Phase B as `HEAD:feature/fortune-graph-app` without force, then Task 8 languages. Do not change deploy-key policies. Continue Tasks 6–13 natively, dispatch one fresh whole-branch reviewer, then perform Task 14. The earlier Claude consultation verified only the authentication proposal; it does not replace the whole-branch review.
 
+## Execution checkpoint (2026-10-26, Orca UI wave)
+
+- Tasks 8–13 are implemented in the `insung3511/eagleray` worktree on top of `dad5980`, **uncommitted** (the Orca coordinator forbade commits, pushes, and deploys for this wave). Nothing is published; the live site still serves the old UI until a later, separately verified release.
+- `/` and `/board` render `MainView` and `BoardView` from `loadMarketData`; `/language` stores `rm-lang` and returns through `sanitizeReturnPath`. The old `rank-market` feature, its fixtures, and `tests/private-rank-market.spec.ts` are deleted; nothing imports them.
+- Deviations (each recorded as a ruling in the local ledger): `sanitizeReturnPath` also rejects control/whitespace characters and anything WHATWG URL parsing turns into another origin or a `//` path (e.g. `/\t/x`, `/.//x`, `/%2e//x`); "today" values use the series up to the newest stored edition; the other show's dotted line is aligned by date; the old `overflow-x: hidden` on `html, body` was removed so overflow checks are honest; extra copy keys `overall`, `source`, `range`.
+- Checks (real exit codes): lint 0, typecheck 0, Vitest 0 (30 files, 161 tests), `npm run build` 0, Playwright 0 (27 passed, 1 phone-only test skipped on desktop). Playwright ran through the installed Google Chrome (`channel: "chrome"`, local git-ignored config) because the bundled Chromium revision is not in the browser cache; `playwright.config.ts` and CI are unchanged.
+- Fixture pages were inspected against the prototype at 1280 px and 390 px. That review found and fixed a phone bug where the stamp calendar's pinned sign column scrolled away (now covered by the phone e2e test). The design-playbook audit was not run (its package marker is missing).
+- Review follow-up (still uncommitted): the independent UI review found no blockers. Fixed:
+  - Cross-year short ranges keep day labels; `YYYY/M` only for spans over 120 days in different years.
+  - The other show's dotted line follows that show's own expected mornings (`comparisonLine`): its days off never break it, its missing mornings always do, even without a slot on this axis.
+  - Rank race line widths follow point density (lone mornings keep full width); faces sit on each sign's last drawn morning; 4 date ticks under 720 px.
+  - Redundant `"use client"` removed from `rank-race.tsx` and `stamp-calendar.tsx` (TS71007).
+  - The stamp scroller is a focusable, localized region with a visible focus ring.
+  - Deferred by the coordinator: weekend/pre-ingest stale and coverage semantics (need a product decision), `useMarketState` URL reading, the language-switch history entry, localized titles, and payload size.
+  - Checks: lint 0, typecheck 0, Vitest 0 (31 files, 173 tests).
+- Remaining: owner/coordinator commit, then Task 14 (deploy, backfill, export, live checks).
+
 ## File Map
 
 **Data layer**

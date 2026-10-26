@@ -1,32 +1,42 @@
 :root {
-  --background: #07111f;
-  --foreground: #eef6ff;
+  --ink: #4b3a34;
+  --soft: #9a8479;
+  --line: #f0e2d6;
+  --cream: #fff8ee;
+  --card: #fffdf9;
+  --pink: #ff8fab;
+  --pinkbg: #ffe3ea;
+  --sky: #6aa8e8;
+  --skybg: #e3f0ff;
+  --butter: #ffd34d;
+  --hanko: #e2504c;
+  --font-stack-maru: var(--font-maru), "Hiragino Maru Gothic ProN", "M PLUS Rounded 1c", sans-serif;
+  color-scheme: light;
 }
 
-html {
-  height: 100%;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background-color: var(--cream);
+  background-image: radial-gradient(#ffdfe7 1.6px, transparent 1.7px);
+  background-size: 20px 20px;
+  font-family: var(--font-stack-maru);
+  font-weight: 500;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
+h1,
+h2,
+h3,
+p {
   margin: 0;
 }
 
@@ -35,11 +45,34 @@ a {
   text-decoration: none;
 }
 
-html {
-  color-scheme: dark;
-}
-
 button,
 input {
   font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--pink);
+  outline-offset: 2px;
+}
+
+/* Korean: Jua for headings and bold text, Gowun Dodum for body; Japanese glyphs fall back to Zen Maru. */
+html:lang(ko) body {
+  font-family: var(--font-ko-body), var(--font-stack-maru);
+}
+
+html:lang(ko) :is(h1, h2, h3, b, strong, button, th) {
+  font-family: var(--font-ko-heading), var(--font-stack-maru);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,12 +1,16 @@
-import { RankMarket } from "@/features/rank-market/rank-market";
-import { loadRankMarketData } from "@/features/rank-market/load-data";
-import { getJstDate } from "@/lib/time/jst";
+import { cookies } from "next/headers";
+
+import { MainView } from "@/features/market/components/main-view";
+import { LANGUAGE_COOKIE, parseLanguage } from "@/features/market/language";
+import { loadMarketData } from "@/features/market/load-data";
+import { parseMarketParams, type SearchParams } from "@/features/market/market-params";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
-  const now = new Date();
-  const data = await loadRankMarketData({ generatedAt: now });
+export default async function HomePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const params = await searchParams;
+  const lang = parseLanguage((await cookies()).get(LANGUAGE_COOKIE)?.value);
+  const data = await loadMarketData();
 
-  return <RankMarket initialData={data} currentDate={getJstDate(now)} />;
+  return <MainView data={data} initial={parseMarketParams(params)} lang={lang} />;
 }

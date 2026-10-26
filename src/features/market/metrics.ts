@@ -12,6 +12,36 @@ export function sliceSeries(series: RankSeries, range: MarketRange, currentDate:
   };
 }
 
+// "Today" in the views means the newest stored edition, so a stale morning does not blank every rank.
+export function seriesUntil(series: RankSeries, date: string): RankSeries {
+  const count = series.dates.filter((value) => value <= date).length;
+  return {
+    dates: series.dates.slice(0, count),
+    ranks: Object.fromEntries(ZODIAC_CODES.map((code) => [code, series.ranks[code].slice(0, count)])) as RankSeries["ranks"],
+  };
+}
+
+// Another show's ranks placed on this show's axis, with runs that follow the other show's own expected mornings:
+// its missing morning ends a run even where this axis has no slot for it, and a day it never publishes does not.
+export function comparisonLine(series: RankSeries, zodiacCode: ZodiacCode, dates: string[]) {
+  const slots = new Map(dates.map((date, i) => [date, i]));
+  const values: (number | null)[] = dates.map(() => null), runs: number[][] = [];
+  let open = false;
+  series.dates.forEach((date, k) => {
+    if (!dates.length || date < dates[0] || date > dates.at(-1)!) return;
+    const rank = series.ranks[zodiacCode][k], slot = slots.get(date);
+    if (rank === null) {
+      open = false;
+    } else if (slot !== undefined) {
+      values[slot] = rank;
+      if (open) runs.at(-1)!.push(slot);
+      else runs.push([slot]);
+      open = true;
+    }
+  });
+  return { values, runs };
+}
+
 export function rangeStats(values: (number | null)[]) {
   const ranks = values.filter((value) => value !== null);
   const covered = ranks.length;

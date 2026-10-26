@@ -96,10 +96,10 @@ If HTML/JSON tokens change, ingestion should fail closed. Update invented fixtur
 
 After deployment:
 
-1. Confirm public `/` shows the rank-market UI without sign-in.
+1. Confirm public `/`, `/board`, and `/language` show the market UI without sign-in, in Japanese on a first visit.
 2. Trigger GitHub Actions `workflow_dispatch` with `source=all`, `force=false`.
 3. Confirm the response has one terminal result per source and no fortune prose.
-4. Confirm Ohaasa/Gogo switching updates the hero, race, trend chart, metrics, and fortune panel.
+4. Confirm Ohaasa/Gogo switching updates the ticker, watchlist, rank chart, stats, fortune card, and the board's race and stamp calendar.
 5. Confirm displayed edition dates match persisted Japanese source dates.
 6. Confirm no source images/logos appear.
 7. Keep `/api/internal/ingest` protected by `INGEST_SECRET`.

@@ -3,7 +3,7 @@ import { ZODIAC_CODES } from "@/features/fortune/domain";
 import { buildSeries, shiftDate } from "@/features/market/series";
 import {
   currentTopThreeStreak, dailyChange, hotStreaks, moodFor, moodLineIndex,
-  rangeStats, sliceSeries, stampColor, topMovers, weeklyAwards,
+  comparisonLine, rangeStats, seriesUntil, sliceSeries, stampColor, topMovers, weeklyAwards,
 } from "@/features/market/metrics";
 
 const blank = (days = 17) => buildSeries("gogo", shiftDate("2026-10-26", 1 - days), "2026-10-26", []);
@@ -77,5 +77,36 @@ describe("null-safe market metrics", () => {
     expect(stampColor(1)).toBe("#ff6f91");
     expect(stampColor(null)).toBe("transparent");
     expect(stampColor(12)).toBe("hsla(215,70%,72%,1)");
+  });
+
+  it("views a series as of the latest edition", () => {
+    const series = buildSeries("ohaasa", "2026-10-21", "2026-10-26", [
+      { date: "2026-10-22", zodiacCode: "leo", rank: 2 }, { date: "2026-10-23", zodiacCode: "leo", rank: 5 },
+    ]);
+    const until = seriesUntil(series, "2026-10-23");
+    expect(until.dates).toEqual(["2026-10-21", "2026-10-22", "2026-10-23"]);
+    expect(until.ranks.leo).toEqual([null, 2, 5]);
+    expect(seriesUntil(series, "2026-10-01").dates).toEqual([]);
+  });
+
+  const leo = (source: "ohaasa" | "gogo", ranks: Record<string, number>) => buildSeries(source, "2026-10-21", "2026-10-26",
+    Object.entries(ranks).map(([date, rank]) => ({ date, zodiacCode: "leo" as const, rank })));
+  const gogoAxis = buildSeries("gogo", "2026-10-21", "2026-10-26", []).dates;
+  const ohaasaAxis = buildSeries("ohaasa", "2026-10-21", "2026-10-26", []).dates;
+
+  it("runs Ohaasa's comparison line across weekends it never publishes, but breaks it at its missing mornings", () => {
+    // Ohaasa: 10-21 rank 4, 10-22 missing, 10-23 rank 2, weekend not expected, 10-26 rank 5. Gogo's axis is daily.
+    const line = comparisonLine(leo("ohaasa", { "2026-10-21": 4, "2026-10-23": 2, "2026-10-26": 5 }), "leo", gogoAxis);
+    expect(line.values).toEqual([4, null, 2, null, null, 5]);
+    expect(line.runs).toEqual([[0], [2, 5]]);
+  });
+
+  it("breaks Gogo's comparison line at its missing weekend even though Ohaasa's axis has no weekend slot", () => {
+    const full = { "2026-10-21": 3, "2026-10-22": 4, "2026-10-23": 5, "2026-10-24": 8, "2026-10-25": 6, "2026-10-26": 7 };
+    expect(comparisonLine(leo("gogo", full), "leo", ohaasaAxis)).toEqual({ values: [3, 4, 5, 7], runs: [[0, 1, 2, 3]] });
+    const withGap = Object.fromEntries(Object.entries(full).filter(([date]) => date !== "2026-10-24"));
+    expect(comparisonLine(leo("gogo", withGap), "leo", ohaasaAxis)).toEqual({ values: [3, 4, 5, 7], runs: [[0, 1, 2], [3]] });
+    expect(comparisonLine(leo("gogo", full), "leo", [])).toEqual({ values: [], runs: [] });
+    expect(comparisonLine(leo("gogo", {}), "leo", ohaasaAxis)).toEqual({ values: [null, null, null, null], runs: [] });
   });
 });
