@@ -113,7 +113,18 @@ Original SVG characters: a round mochi body in the sign's pastel color, a faint 
 | 4–9 | dot eyes, "ω" mouth |
 | 10–12 | droopy eyes, small frown, sweat drop |
 
-### 5.8 History honesty
+### 5.8 Phone layout
+
+The owner tested the prototype on a phone. The board's stamp calendar pushed the whole page sideways, and chart text shrank until it couldn't be read. Rules:
+
+- **No page-level horizontal scroll** at 390 px wide, on any view.
+- **Chart text keeps its real size.** Charts draw at the container's measured pixel width rather than scaling a fixed-width drawing down.
+- **Stamp calendar:** only the stamp area scrolls sideways, inside its card. The sign column stays pinned on the left. It opens scrolled to the newest morning.
+- **Rank race legend:** one sideways-scrolling row of chips on phones, not four wrapped rows.
+- **Watchlist on phones:** keep face and name, rank, change, and sparkline; drop the best/worst column.
+- **Award cards:** two per row on phones.
+
+### 5.9 History honesty
 
 - The time axis uses the mornings a show is **expected** to publish, from the existing `isSourceExpected` rule: Ohaasa skips weekends and Japanese holidays, like a stock market with no trading days; Gogo is daily.
 - An expected morning with no stored edition is a **gap**: lines break, and stamps are empty. Never interpolate.
