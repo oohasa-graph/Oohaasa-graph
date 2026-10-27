@@ -34,5 +34,8 @@ describe("Wayback snapshots", () => {
     expect(deriveEditionDate("ohaasa", dated("20260924"), "2026-10-26")).toBeNull();
     expect(deriveEditionDate("ohaasa", dated("20261028"), "2026-10-26")).toBeNull();
     expect(deriveEditionDate("ohaasa", dated("20990105"), "2026-10-26")).toBeNull();
+    // Inside the capture window but before any real edition.
+    expect(deriveEditionDate("ohaasa", dated("20201231"), "2021-01-05")).toBeNull();
+    expect(deriveEditionDate("ohaasa", dated("20210101"), "2021-01-05")).toBe("2021-01-01");
   });
 });

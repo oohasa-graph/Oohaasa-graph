@@ -126,6 +126,13 @@ test("pages refuse framing and sniffing and hide the framework", async ({ reques
   }
 });
 
+test("sign-in stays unmounted unless explicitly enabled", async ({ request }) => {
+  expect((await request.get("/login")).status()).toBe(404);
+  expect((await request.get("/api/auth/providers")).status()).toBe(404);
+  const attempt = await request.post("/api/auth/callback/credentials", { form: { username: "owner", password: "guess" } });
+  expect(attempt.status()).toBe(404);
+});
+
 test("unknown or repeated URL params fall back to safe defaults", async ({ page }) => {
   const errors = watchErrors(page);
   const response = await page.goto("/?sign=foo&range=10y&source=x");

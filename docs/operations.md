@@ -20,8 +20,9 @@ Set these in the Vercel project:
 - `SOURCE_USER_AGENT` — identifying user agent with contact information.
 - `DATA_FIXTURE_MODE=0` or unset. Never set `DATA_FIXTURE_MODE=1` in production; the app throws if fixture mode is requested while `NODE_ENV=production`.
 
-Optional only if private routes are re-enabled later:
+Optional only if private routes are re-enabled later. Sign-in (`/login` and `/api/auth/*`) answers 404 unless `AUTH_ENABLED=1`; leave it unset while the site is public.
 
+- `AUTH_ENABLED=1`
 - `PRIVATE_USERNAME`
 - `PRIVATE_PASSWORD_HASH` — bcrypt hash, not the plaintext password.
 - `NEXTAUTH_SECRET` — at least 32 random characters.
@@ -159,7 +160,7 @@ gh workflow run backfill.yml --repo oohasa-graph/Oohaasa-graph \
   -f source=all -f from=2026-10-01 -f to=2026-10-25
 ```
 
-Start with this small window. After it succeeds, import `2021-06-01..2026-09-30`, then run a full private export. Expected usable coverage is roughly 250 Gogo and 115 Ohaasa mornings in total, not continuous daily history.
+Start with this small window. After it succeeds, import `2021-06-01..2026-09-30`, then run a full private export. The ingest route rejects captures before `2021-01-01` or after today (JST), and ignores content dates outside 31 days before to 1 day after the capture, so keep `from` on or after `2021-01-01`; an earlier window ends in a failed run. Expected usable coverage is roughly 250 Gogo and 115 Ohaasa mornings in total, not continuous daily history.
 
 The runner requests at most one Wayback resource per second. Invalid or unavailable snapshots are counted and skipped. Existing editions are never overwritten, even with `force`. Re-running is safe. Logs contain sources, timestamps, dates, statuses and counts only.
 

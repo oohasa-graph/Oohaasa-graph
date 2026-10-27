@@ -36,5 +36,6 @@ export function deriveEditionDate(source: Source, body: unknown, capturedJstDate
     editionDate = error.sourceDate;
   }
   const offset = daysBetween(capturedJstDate, editionDate);
-  return offset >= -MAX_DAYS_BEFORE_CAPTURE && offset <= MAX_DAYS_AFTER_CAPTURE ? editionDate : null;
+  return offset >= -MAX_DAYS_BEFORE_CAPTURE && offset <= MAX_DAYS_AFTER_CAPTURE && editionDate >= EARLIEST_EDITION_DATE
+    ? editionDate : null;
 }
