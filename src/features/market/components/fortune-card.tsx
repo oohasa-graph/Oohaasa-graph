@@ -26,6 +26,7 @@ export function FortuneCard({ lang, source, sign, entry }: {
             <RankBadge lang={lang} rank={entry.rank} />
           </div>
           <p className={styles.fortuneText} lang="ja">{entry.comment}</p>
+          {lang !== "ja" && <p className={styles.originalNote}>{t.originalText}</p>}
           <dl className={styles.lucky}>
             {source === "ohaasa" && entry.luckyHint && <><dt>{t.luckyHint}</dt><dd lang="ja">{entry.luckyHint}</dd></>}
             {source === "gogo" && entry.luckyColor && <><dt>{t.luckyColor}</dt><dd lang="ja">{entry.luckyColor}</dd></>}

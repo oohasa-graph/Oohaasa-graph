@@ -85,6 +85,21 @@ describe("MainView", () => {
     expect(within(fortune).getByText("Love #1")).toBeInTheDocument();
   });
 
+  it("tells English and Korean readers the fortune stays in the original Japanese", () => {
+    for (const [lang, heading, note] of [
+      ["en", "Today's fortune", "Shown in the original Japanese"],
+      ["ko", "오늘의 운세", "일본어 원문 그대로 보여 드려요"],
+    ] as const) {
+      const { unmount } = render(<MainView data={marketFixture} initial={initial} lang={lang} />);
+      const fortune = screen.getByRole("heading", { name: heading }).closest("section")!;
+      expect(within(fortune).getByText(note)).toBeVisible();
+      unmount();
+    }
+    render(<MainView data={marketFixture} initial={initial} lang="ja" />);
+    const fortune = screen.getByRole("heading", { name: "今日の運勢" }).closest("section")!;
+    expect(within(fortune).queryByText("番組の原文のまま")).toBeNull();
+  });
+
   it("shows coverage and breaks the chart line at missing mornings", () => {
     const { container } = render(<MainView data={marketFixture} initial={initial} lang="ja" />);
     // Ohaasa is missing 2026-10-14 and 2026-10-15 inside the one-month window.

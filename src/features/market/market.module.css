@@ -292,6 +292,7 @@
 
 .fortuneHead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-weight: 900; }
 .fortuneText { line-height: 1.8; font-weight: 500; overflow-wrap: anywhere; }
+.originalNote { margin: 2px 0 0; color: var(--soft); font-size: 12px; font-weight: 700; }
 .lucky { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 12px 0 0; font-size: 14px; }
 .lucky dt { color: var(--soft); font-weight: 700; }
 .lucky dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
