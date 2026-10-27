@@ -15,4 +15,11 @@ describe("source zodiac mappings", () => {
     expect(zodiacFromGogoId("tenbin")).toBe("libra");
     expect(() => zodiacFromGogoId("unknown")).toThrow(InvalidEditionError);
   });
+
+  it("rejects inherited object keys", () => {
+    for (const key of ["constructor", "__proto__", "toString"]) {
+      expect(() => zodiacFromOhaasaCode(key)).toThrow(InvalidEditionError);
+      expect(() => zodiacFromGogoId(key)).toThrow(InvalidEditionError);
+    }
+  });
 });

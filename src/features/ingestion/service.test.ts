@@ -297,6 +297,18 @@ describe("ingestSource", () => {
     expect(JSON.stringify(result)).not.toContain(sourceProse);
   });
 
+  it("strips non-ASCII tag and data attribute names from the skeleton", async () => {
+    const test = makeServiceInput({
+      source: "gogo",
+      body: `<html><section id="ohitsuji"><x本文 data-本文="1">a</x本文></section></html>`,
+    });
+
+    const result = await ingestSource({ ...test.input, attempt: "manual" });
+
+    expect(result.diagnostic).toContain("detail=section#ohitsuji(x{data-}(~1))");
+    expect(result.diagnostic).not.toContain("本文");
+  });
+
   it("normalizes every source fetch error before finalizing the run", async () => {
     const unsafeCode = "Invented upstream code and prose";
     const test = makeServiceInput();

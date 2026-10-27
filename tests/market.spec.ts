@@ -115,6 +115,17 @@ test("language page switches to Korean and remembers it", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("pages refuse framing and sniffing and hide the framework", async ({ request }) => {
+  for (const path of ["/", "/board", "/language"]) {
+    const headers = (await request.get(path)).headers();
+    expect(headers["x-frame-options"]).toBe("DENY");
+    expect(headers["content-security-policy"]).toBe("frame-ancestors 'none'");
+    expect(headers["x-content-type-options"]).toBe("nosniff");
+    expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+    expect(headers["x-powered-by"]).toBeUndefined();
+  }
+});
+
 test("unknown or repeated URL params fall back to safe defaults", async ({ page }) => {
   const errors = watchErrors(page);
   const response = await page.goto("/?sign=foo&range=10y&source=x");

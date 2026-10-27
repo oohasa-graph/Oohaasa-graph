@@ -84,11 +84,13 @@ export function createPostHandler(dependencies: HandlerDependencies) {
 
     let targetDate = getJstDate(dependencies.now());
     if (body.attempt === "backfill" && body.source !== "all") {
+      const today = targetDate;
       const snapshot = parseSnapshotUrl(body.snapshotUrl ?? "");
-      if (!snapshot || snapshot.originalUrl !== SOURCE_URLS[body.source]) {
+      if (!snapshot || snapshot.originalUrl !== SOURCE_URLS[body.source] || snapshot.capturedJstDate > today) {
         return NextResponse.json({ error: "invalid_snapshot" }, { status: 400 });
       }
-      targetDate = deriveEditionDate(body.source, body.sourceBody, snapshot.capturedJstDate) ?? snapshot.capturedJstDate;
+      const derived = deriveEditionDate(body.source, body.sourceBody, snapshot.capturedJstDate);
+      targetDate = derived !== null && derived <= today ? derived : snapshot.capturedJstDate;
     }
     const results = await Promise.all(
       selectedSources(body.source).map((source) =>

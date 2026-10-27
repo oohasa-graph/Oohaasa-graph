@@ -36,4 +36,15 @@ describe("market history read model", () => {
     expect(expanded.sources.gogo.series.dates[0]).toBe("2026-07-28");
     expect(expanded.generatedAt).toBe("2026-10-26T03:00:00.000Z");
   });
+
+  it("never starts a series before the earliest possible edition, whatever a stray row says", async () => {
+    const test = await createTestRepository();
+    client = test.client;
+    await test.repository.saveEdition(makeParsedEdition({ source: "gogo", date: "0100-01-01" }), metadata("archive"));
+    await test.repository.saveEdition(makeParsedEdition({ source: "gogo", date: "2026-10-26" }), metadata("2026-10-26"));
+    const { sources } = await getMarketData({ db: test.db, generatedAt: new Date("2026-10-26T03:00:00Z") });
+    expect(sources.gogo.series.dates[0]).toBe("2021-01-01");
+    expect(sources.gogo.series.dates).toHaveLength(2125);
+    expect(sources.gogo.series.ranks.libra.at(-1)).toBe(7);
+  });
 });

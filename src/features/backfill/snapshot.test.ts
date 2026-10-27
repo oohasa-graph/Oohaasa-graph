@@ -16,6 +16,7 @@ describe("Wayback snapshots", () => {
     raw("20250601013136").replace("id_", ""),
     raw("20250601013136").replace("web.archive.org", "evil.example"),
     raw("2025060101313"), raw("20251301000000"), raw("20250230000000"),
+    raw("20201231140000"), raw("01000104000000"),
   ])("rejects invalid captures", (url) => expect(parseSnapshotUrl(url)).toBeNull());
   it("derives content dates, including the next edition across midnight", () => {
     const html = readFileSync("src/test/fixtures/gogo-current.html", "utf8");
@@ -26,5 +27,12 @@ describe("Wayback snapshots", () => {
     const previous = new Date(Date.parse(iso) - 864e5).toISOString().slice(0, 10);
     expect(deriveEditionDate("ohaasa", ohaasa, previous)).toBe(iso);
     expect(deriveEditionDate("gogo", "<html></html>", "2026-10-26")).toBeNull();
+  });
+  it("ignores content dates far from the capture", () => {
+    const dated = (onair: string) => [{ ...ohaasa[0], onair_date: onair }];
+    expect(deriveEditionDate("ohaasa", dated("20260925"), "2026-10-26")).toBe("2026-09-25");
+    expect(deriveEditionDate("ohaasa", dated("20260924"), "2026-10-26")).toBeNull();
+    expect(deriveEditionDate("ohaasa", dated("20261028"), "2026-10-26")).toBeNull();
+    expect(deriveEditionDate("ohaasa", dated("20990105"), "2026-10-26")).toBeNull();
   });
 });

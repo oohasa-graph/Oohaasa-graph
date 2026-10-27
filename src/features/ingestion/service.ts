@@ -247,8 +247,10 @@ export async function ingestSource(
               const id = ($(node).attr("id") ?? "").replace(/[^a-zA-Z0-9_-]/g, "");
               const source = ($(node).attr("src") ?? "").split(/[?#]/)[0].split("/").pop()
                 ?.replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 40);
-              const data = Object.keys(node.attribs).filter((name) => name.startsWith("data-"));
-              const head = `${node.name}${id ? `#${id}` : ""}${classes(node) ? `.${classes(node).trim().split(/\s+/).join(".")}` : ""}${source ? `@${source}` : ""}${data.length ? `{${data.join(",")}}` : ""}`;
+              const data = Object.keys(node.attribs).filter((name) => name.startsWith("data-"))
+                .map((name) => name.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40));
+              const tag = node.name.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40);
+              const head = `${tag}${id ? `#${id}` : ""}${classes(node) ? `.${classes(node).trim().split(/\s+/).join(".")}` : ""}${source ? `@${source}` : ""}${data.length ? `{${data.join(",")}}` : ""}`;
               const children = depth >= 6 ? [] : $(node).contents().toArray().slice(0, 16)
                 .map((child) => skeleton(child, depth + 1)).filter(Boolean);
               return children.length ? `${head}(${children.join(" ")})` : head;

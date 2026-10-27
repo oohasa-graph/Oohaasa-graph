@@ -16,6 +16,8 @@ on:
         type: boolean
         default: false
 
+permissions: {}
+
 jobs:
   ingest:
     runs-on: ubuntu-latest

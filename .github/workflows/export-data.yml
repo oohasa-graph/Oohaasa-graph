@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Create token for the private data repository only
         id: data-token
         # Full commit SHA is required for this credential-bearing action.
