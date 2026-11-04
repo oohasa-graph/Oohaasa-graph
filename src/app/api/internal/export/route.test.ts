@@ -1,11 +1,42 @@
 import { describe, expect, it, vi } from "vitest";
-import { createGetHandler } from "./route";
+import { createGetHandler } from "./handler";
+import { GET } from "./route";
+import * as database from "@/db/client";
 import { makeParsedEdition, metadata } from "@/test/factories";
 
 const edition = { ...makeParsedEdition({ source: "gogo", date: "2026-10-01" }), ...metadata("a"), fetchedAt: metadata("a").fetchedAt.toISOString() };
 const request = (query: string, secret?: string) => new Request(`https://test/api/internal/export${query}`, { headers: secret ? { Authorization: `Bearer ${secret}` } : {} });
 
 describe("read-only edition export", () => {
+  it("rejects unauthorized requests at the exported handler without database configuration", async () => {
+    vi.stubEnv("DATABASE_URL", undefined);
+    vi.stubEnv("INGEST_SECRET", "correct-secret");
+    vi.stubEnv("SOURCE_USER_AGENT", "synthetic-test");
+    const getDb = vi.spyOn(database, "getDb");
+    try {
+      for (const secret of [undefined, "wrong"]) {
+        const response = await GET(request("?from=2026-10-01&to=2026-10-03", secret));
+        expect(response.status).toBe(401);
+        expect(response.headers.get("Cache-Control")).toBe("no-store");
+        expect(await response.json()).toEqual({ error: "unauthorized" });
+      }
+      expect(getDb).not.toHaveBeenCalled();
+      getDb.mockImplementation(() => { throw new Error("synthetic database initialization"); });
+      expect(() => GET(request("?from=2026-10-01&to=2026-10-03", "correct-secret"))).toThrow("synthetic database initialization");
+      expect(getDb).toHaveBeenCalledOnce();
+      getDb.mockClear();
+      vi.stubEnv("INGEST_SECRET", undefined);
+      const unconfigured = await GET(request("?from=2026-10-01&to=2026-10-03", "correct-secret"));
+      expect(unconfigured.status).toBe(401);
+      expect(unconfigured.headers.get("Cache-Control")).toBe("no-store");
+      expect(await unconfigured.json()).toEqual({ error: "unauthorized" });
+      expect(getDb).not.toHaveBeenCalled();
+    } finally {
+      getDb.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("rejects missing and wrong secrets before querying", async () => {
     const listEditions = vi.fn();
     const get = createGetHandler({ secret: "correct", listEditions });

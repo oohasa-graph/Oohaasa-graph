@@ -32,7 +32,7 @@ export const GOGO_ZODIAC_BY_ID: Readonly<Record<string, ZodiacCode>> = Object.fr
 });
 
 export function zodiacFromOhaasaCode(value: string): ZodiacCode {
-  const zodiac = OHAASA_ZODIAC_BY_CODE[value];
+  const zodiac = Object.hasOwn(OHAASA_ZODIAC_BY_CODE, value) ? OHAASA_ZODIAC_BY_CODE[value] : undefined;
   if (!zodiac) {
     throw new InvalidEditionError("Unknown Ohaasa zodiac code");
   }
@@ -40,7 +40,7 @@ export function zodiacFromOhaasaCode(value: string): ZodiacCode {
 }
 
 export function zodiacFromGogoId(value: string): ZodiacCode {
-  const zodiac = GOGO_ZODIAC_BY_ID[value];
+  const zodiac = Object.hasOwn(GOGO_ZODIAC_BY_ID, value) ? GOGO_ZODIAC_BY_ID[value] : undefined;
   if (!zodiac) {
     throw new InvalidEditionError("Unknown Gogo zodiac id");
   }

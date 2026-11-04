@@ -30,6 +30,9 @@ export type ParsedEdition = {
   fortunes: ParsedFortune[];
 };
 
+// No stored history predates this; older dates are treated as forged or corrupt.
+export const EARLIEST_EDITION_DATE = "2021-01-01";
+
 export const EDITION_ORIGINS = ["live", "wayback"] as const;
 export type EditionOrigin = (typeof EDITION_ORIGINS)[number];
 

@@ -4,7 +4,7 @@ import { getDb } from "@/db/client";
 import { toParsedFortune } from "@/db/repository";
 import { editions, fortuneEntries } from "@/db/schema";
 import * as schema from "@/db/schema";
-import { SOURCES, ZODIAC_CODES, type ZodiacCode } from "@/features/fortune/domain";
+import { EARLIEST_EDITION_DATE, SOURCES, ZODIAC_CODES, type ZodiacCode } from "@/features/fortune/domain";
 import { buildSeries, shiftDate } from "@/features/market/series";
 import type { MarketData, MarketSourceData } from "@/features/market/types";
 import { getJstDate } from "@/lib/time/jst";
@@ -23,7 +23,9 @@ export async function getMarketData(
     const [bounds] = await db.select({ first: min(editions.editionDate), last: max(editions.editionDate) })
       .from(editions).where(sourceFilter);
     const baseline = shiftDate(currentDate, -90);
-    const start = bounds.first && bounds.first < baseline ? bounds.first : baseline;
+    // A stray row older than any real edition must not stretch every visitor's series across centuries.
+    const first = bounds.first && bounds.first < EARLIEST_EDITION_DATE ? EARLIEST_EDITION_DATE : bounds.first;
+    const start = first && first < baseline ? first : baseline;
     // Keep archive prose out of the history query and the client payload.
     const [history, latestRows] = await Promise.all([
       db.select({ date: editions.editionDate, zodiacCode: fortuneEntries.zodiacCode, rank: fortuneEntries.rank })
