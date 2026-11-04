@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IngestionAttempt, IngestionStatus, Source } from "@/features/fortune/domain";
-import { createPostHandler } from "@/app/api/internal/ingest/route";
+import * as database from "@/db/client";
+import { createPostHandler } from "@/app/api/internal/ingest/handler";
+import { POST } from "@/app/api/internal/ingest/route";
 
 const fixedNow = () => new Date("2026-08-25T20:15:00Z");
 
@@ -35,6 +37,34 @@ function result(source: Source, status: IngestionStatus) {
 }
 
 describe("POST /api/internal/ingest", () => {
+  it("rejects unauthorized requests at the exported handler without database configuration", async () => {
+    vi.stubEnv("DATABASE_URL", undefined);
+    vi.stubEnv("INGEST_SECRET", "correct-secret");
+    vi.stubEnv("SOURCE_USER_AGENT", "synthetic-test");
+    const getDb = vi.spyOn(database, "getDb");
+    try {
+      for (const authorization of [undefined, "Bearer wrong-secret", "Basic correct-secret"]) {
+        const headers = authorization ? { authorization } : undefined;
+        const response = await POST(new Request("http://test/api/internal/ingest", { method: "POST", headers }));
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({ error: "unauthorized" });
+      }
+      expect(getDb).not.toHaveBeenCalled();
+      getDb.mockImplementation(() => { throw new Error("synthetic database initialization"); });
+      expect(() => POST(makeRequest({ attempt: "primary", source: "gogo", force: false }))).toThrow("synthetic database initialization");
+      expect(getDb).toHaveBeenCalledOnce();
+      getDb.mockClear();
+      vi.stubEnv("INGEST_SECRET", undefined);
+      const unconfigured = await POST(makeRequest({ attempt: "primary", source: "gogo", force: false }));
+      expect(unconfigured.status).toBe(401);
+      expect(await unconfigured.json()).toEqual({ error: "unauthorized" });
+      expect(getDb).not.toHaveBeenCalled();
+    } finally {
+      getDb.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
   const snapshotUrl = "https://web.archive.org/web/20261025210000id_/https://www.tv-asahi.co.jp/goodmorning/uranai/";
   const backfill = { attempt: "backfill" as const, source: "gogo" as const, force: false, snapshotUrl, sourceBody: readFileSync("src/test/fixtures/gogo-current.html", "utf8") };
   const backfillNow = () => new Date("2026-10-27T00:00:00Z");
