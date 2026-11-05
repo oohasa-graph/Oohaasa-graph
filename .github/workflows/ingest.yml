@@ -15,8 +15,19 @@ on:
       force:
         type: boolean
         default: false
+      attempt:
+        type: choice
+        options: [primary, retry_1, retry_2, final, manual]
+        default: manual
 
 permissions: {}
+
+# One daily-ingest workload across sources/refs; never replace a pending final.
+# FIFO is by queue entry, not dispatch time; 100 pending runs maximum.
+concurrency:
+  group: daily-ingest
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   ingest:
@@ -27,6 +38,7 @@ jobs:
       SCHEDULE: ${{ github.event.schedule }}
       SOURCE_INPUT: ${{ github.event.inputs.source || 'all' }}
       FORCE_INPUT: ${{ github.event.inputs.force || 'false' }}
+      ATTEMPT_INPUT: ${{ github.event.inputs.attempt || 'manual' }}
     steps:
       - name: Validate ingestion configuration
         shell: bash
@@ -53,7 +65,11 @@ jobs:
             "15 21 * * *") attempt="retry_1" ;;
             "45 22 * * *") attempt="retry_2" ;;
             "50 23 * * *") attempt="final" ;;
-            *) attempt="manual" ;;
+            *) attempt="${ATTEMPT_INPUT:-manual}" ;;
+          esac
+          case "$attempt" in
+            primary|retry_1|retry_2|final|manual) ;;
+            *) echo "::error::Invalid ingestion attempt"; exit 1 ;;
           esac
           echo "attempt=$attempt" >> "$GITHUB_OUTPUT"
 
@@ -65,6 +81,7 @@ jobs:
           source_input="$SOURCE_INPUT"
           force_input="$FORCE_INPUT"
           failed=0
+          printf '| source | JST target date | attempt | status | HTTP | results |\n|---|---|---|---|---|---|\n' >> "$GITHUB_STEP_SUMMARY"
           for source in ohaasa gogo; do
             if [[ "$source_input" != "all" ]] && [[ "$source_input" != "$source" ]]; then
               continue
@@ -78,29 +95,59 @@ jobs:
               --arg source "$source" --argjson force "$force_input" \
               '{attempt: $attempt, source: $source, force: $force}')
             file=$(mktemp)
-            if curl --fail --location --silent --show-error \
+            if curl --fail --location --silent \
               --connect-timeout 10 --max-time 30 \
               --user-agent 'Oohaasa-graph/1.0 (github.com/oohasa-graph)' \
-              --output "$file" "$url"; then
+              --output "$file" "$url" 2>/dev/null; then
+              # G5: malformed prefetch must not abort the other source. Omit it
+              # and retain the endpoint's existing regional-fetch fallback.
               if [[ "$source" == "gogo" ]]; then
-                body=$(jq -n --argjson request "$body" \
+                if prefetched=$(jq -n --argjson request "$body" \
                   --rawfile content "$file" \
-                  '$request + {sourceBody: $content}')
+                  '$request + {sourceBody: $content}' 2>/dev/null); then
+                  body="$prefetched"
+                fi
               else
-                body=$(jq -n --argjson request "$body" \
+                if prefetched=$(jq -en --argjson request "$body" \
                   --slurpfile content "$file" \
-                  '$request + {sourceBody: $content[0]}')
+                  'if ($content | length) == 1 and ($content[0] | type) == "array"
+                   then $request + {sourceBody: $content[0]} else error("invalid_prefetch") end' 2>/dev/null); then
+                  body="$prefetched"
+                fi
               fi
             fi
             rm -f "$file"
-            if ! curl --fail-with-body --silent --show-error \
+            response=$(mktemp)
+            if ! http=$(curl --fail-with-body --silent \
               --connect-timeout 10 --max-time 120 \
+              --output "$response" --write-out '%{http_code}' \
               -X POST "$INGEST_URL" \
               -H "Authorization: Bearer $INGEST_SECRET" \
               -H "Content-Type: application/json" \
-              --data "$body"; then
+              --data "$body" 2>/dev/null); then
               failed=1
             fi
-            echo
+            [[ "$http" =~ ^[0-9]{3}$ ]] || http=000
+            [[ "$http" == 200 ]] || failed=1
+            # Never print provider/source bodies, diagnostics, URLs or raw errors.
+            if safe=$(jq -er --arg source "$source" '
+              select(type == "object")
+              | select(.targetDate | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
+              | select(.results | type == "array" and length == 1)
+              | .targetDate as $date | .results[0]
+              | select(.source == $source)
+              | .status as $status
+              | select(["success", "already_complete", "stale", "invalid", "fetch_error", "not_expected"] | index($status))
+              | [$date, $status] | @tsv' "$response" 2>/dev/null); then
+              IFS=$'\t' read -r target_date status <<< "$safe"
+              count=1
+            else
+              target_date=unknown
+              status=unparseable_response
+              count=0
+              failed=1
+            fi
+            rm -f "$response"
+            printf '| %s | %s | %s | %s | %s | %s |\n' "$source" "$target_date" "$ATTEMPT" "$status" "$http" "$count" >> "$GITHUB_STEP_SUMMARY"
           done
           exit "$failed"
